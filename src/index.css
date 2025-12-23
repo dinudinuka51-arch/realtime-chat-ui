@@ -65,52 +65,53 @@
   }
 
   .dark {
-    --background: 160 30% 6%;
-    --foreground: 150 20% 95%;
+    /* Ultra dark/black theme with emerald accents */
+    --background: 0 0% 3%;
+    --foreground: 0 0% 95%;
 
-    --card: 160 25% 10%;
-    --card-foreground: 150 20% 95%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 160 25% 10%;
-    --popover-foreground: 150 20% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 158 60% 50%;
-    --primary-foreground: 160 30% 6%;
+    --primary: 158 70% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 160 20% 15%;
-    --secondary-foreground: 150 20% 90%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 85%;
 
-    --muted: 160 20% 15%;
-    --muted-foreground: 155 15% 55%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 160 25% 18%;
-    --accent-foreground: 158 50% 70%;
+    --accent: 158 40% 12%;
+    --accent-foreground: 158 60% 65%;
 
-    --destructive: 0 62% 45%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 160 20% 18%;
-    --input: 160 20% 18%;
-    --ring: 158 60% 50%;
+    --border: 0 0% 14%;
+    --input: 0 0% 10%;
+    --ring: 158 70% 45%;
 
-    --message-sent: 158 60% 35%;
+    --message-sent: 158 65% 38%;
     --message-sent-foreground: 0 0% 100%;
-    --message-received: 160 20% 15%;
-    --message-received-foreground: 150 20% 90%;
-    --online: 142 70% 50%;
-    --offline: 160 15% 45%;
+    --message-received: 0 0% 12%;
+    --message-received-foreground: 0 0% 92%;
+    --online: 142 75% 48%;
+    --offline: 0 0% 40%;
     
-    --chat-bg: 160 25% 8%;
-    --sidebar-bg: 160 25% 10%;
+    --chat-bg: 0 0% 4%;
+    --sidebar-bg: 0 0% 6%;
 
-    --sidebar-background: 160 25% 10%;
-    --sidebar-foreground: 150 20% 90%;
-    --sidebar-primary: 158 60% 50%;
-    --sidebar-primary-foreground: 160 30% 6%;
-    --sidebar-accent: 160 20% 15%;
-    --sidebar-accent-foreground: 150 20% 90%;
-    --sidebar-border: 160 20% 18%;
-    --sidebar-ring: 158 60% 50%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 158 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 158 70% 45%;
   }
 }
 
@@ -188,10 +189,53 @@
   }
 }
 
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.5);
+  }
+}
+
 .animate-message-in {
   animation: message-slide-in 0.3s ease-out forwards;
 }
 
 .animate-pulse-online {
   animation: pulse-online 2s ease-in-out infinite;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+.animate-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent-foreground)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

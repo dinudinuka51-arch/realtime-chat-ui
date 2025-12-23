@@ -4,6 +4,7 @@ import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { WelcomeScreen } from './WelcomeScreen';
 import { UserMenu } from './UserMenu';
+import { OfflineBanner } from './OfflineBanner';
 import { MessageCircle } from 'lucide-react';
 
 export const ChatLayout = () => {
@@ -21,7 +22,9 @@ export const ChatLayout = () => {
   };
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <>
+      <OfflineBanner />
+      <div className="h-screen flex bg-background overflow-hidden">
       {/* Sidebar - Conversation List */}
       <div
         className={`${
@@ -60,6 +63,7 @@ export const ChatLayout = () => {
           <WelcomeScreen />
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
