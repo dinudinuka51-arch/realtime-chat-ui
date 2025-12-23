@@ -68,6 +68,8 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
           message_type: string | null
           sender_id: string
           updated_at: string
@@ -78,6 +80,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_type?: string | null
           sender_id: string
           updated_at?: string
@@ -88,6 +92,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_type?: string | null
           sender_id?: string
           updated_at?: string
@@ -138,6 +144,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      typing_indicators: {
+        Row: {
+          conversation_id: string
+          id: string
+          is_typing: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          is_typing?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          is_typing?: boolean | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
