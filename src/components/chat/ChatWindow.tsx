@@ -21,18 +21,19 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: msgError } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (msgError) throw msgError;
       setMessages(data as Message[]);
 
       // Mark messages as read
@@ -41,37 +42,56 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
         .update({ is_read: true })
         .eq('conversation_id', conversationId)
         .neq('sender_id', user?.id);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
+    } catch (err: any) {
+      console.error('Error fetching messages:', err);
+      setError(`Messages: ${err?.message || JSON.stringify(err)}`);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchOtherUser = async () => {
-    if (!user) return;
+    if (!user) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
 
     try {
-      const { data: participant } = await supabase
+      const { data: participant, error: partError } = await supabase
         .from('conversation_participants')
         .select('user_id')
         .eq('conversation_id', conversationId)
         .neq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (participant) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', participant.user_id)
-          .single();
+      if (partError) throw partError;
 
-        if (profile) {
-          setOtherUser(profile as Profile);
-        }
+      if (!participant) {
+        setError(`No other participant found for conversation: ${conversationId}`);
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching other user:', error);
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', participant.user_id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profile) {
+        setError(`Profile not found for user: ${participant.user_id}`);
+        setLoading(false);
+        return;
+      }
+
+      setOtherUser(profile as Profile);
+    } catch (err: any) {
+      console.error('Error fetching other user:', err);
+      setError(`Fetch error: ${err?.message || JSON.stringify(err)}`);
+      setLoading(false);
     }
   };
 
@@ -169,6 +189,41 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     }
     return username.slice(0, 2).toUpperCase();
   };
+
+  // Copy error to clipboard
+  const copyError = () => {
+    if (error) {
+      navigator.clipboard.writeText(error);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-chat-bg p-6">
+        <div className="max-w-md w-full bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+          <p className="text-sm font-medium text-destructive mb-2">Error Loading Chat</p>
+          <pre className="text-xs text-destructive/80 bg-destructive/5 p-3 rounded-lg overflow-auto max-h-40 whitespace-pre-wrap break-all select-all">
+            {error}
+          </pre>
+          <div className="flex gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyError}
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              Copy Error
+            </Button>
+            {onBack && (
+              <Button variant="outline" size="sm" onClick={onBack}>
+                Go Back
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!otherUser) {
     return (
