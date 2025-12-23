@@ -50,7 +50,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     }
   };
 
-  const fetchOtherUser = async () => {
+  const fetchOtherUser = async (retryCount = 0) => {
     if (!user) {
       setError('User not authenticated');
       setLoading(false);
@@ -88,9 +88,19 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       }
 
       setOtherUser(profile as Profile);
+      setError(null);
     } catch (err: any) {
       console.error('Error fetching other user:', err);
-      setError(`Fetch error: ${err?.message || JSON.stringify(err)}`);
+      
+      // Retry on network errors (up to 3 times)
+      if (err?.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`Retrying fetch... attempt ${retryCount + 1}`);
+        setTimeout(() => fetchOtherUser(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
+      const errorMsg = err?.message || JSON.stringify(err);
+      setError(`Network error: ${errorMsg}\n\nConversation ID: ${conversationId}\nPlease check your internet connection and try again.`);
       setLoading(false);
     }
   };
