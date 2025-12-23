@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Message, Profile } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
-import { Send, ArrowLeft, MoreVertical, Phone, Video } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Phone, Video, RefreshCw, AlertTriangle, Copy, WifiOff } from 'lucide-react';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -16,12 +17,14 @@ interface ChatWindowProps {
 
 export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const { user, loading: authLoading } = useAuth();
+  const isOnline = useOnlineStatus();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -208,31 +211,72 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   };
 
   // Copy error to clipboard
-  const copyError = () => {
+  const copyError = async () => {
     if (error) {
-      navigator.clipboard.writeText(error);
+      await navigator.clipboard.writeText(error);
     }
   };
+
+  // Retry loading
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    setError(null);
+    setLoading(true);
+    
+    await Promise.all([fetchMessages(), fetchOtherUser()]);
+    setRetrying(false);
+  }, [conversationId, user]);
 
   if (error) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-chat-bg p-6">
-        <div className="max-w-md w-full bg-destructive/10 border border-destructive/30 rounded-xl p-4">
-          <p className="text-sm font-medium text-destructive mb-2">Error Loading Chat</p>
-          <pre className="text-xs text-destructive/80 bg-destructive/5 p-3 rounded-lg overflow-auto max-h-40 whitespace-pre-wrap break-all select-all">
+        <div className="max-w-md w-full glass rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
+              {!isOnline ? (
+                <WifiOff className="w-6 h-6 text-destructive" />
+              ) : (
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              )}
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">
+                {!isOnline ? 'No Connection' : 'Error Loading Chat'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {!isOnline ? 'Check your internet connection' : 'Something went wrong'}
+              </p>
+            </div>
+          </div>
+          
+          <pre className="text-xs text-muted-foreground bg-secondary/50 p-4 rounded-xl overflow-auto max-h-32 whitespace-pre-wrap break-all select-all mb-4 border border-border">
             {error}
           </pre>
-          <div className="flex gap-2 mt-3">
+          
+          <div className="flex gap-3">
+            <Button
+              variant="default"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="flex-1 gap-2 h-11 rounded-xl bg-primary hover:bg-primary/90 transition-all duration-300"
+            >
+              <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+              {retrying ? 'Retrying...' : 'Retry'}
+            </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={copyError}
-              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              className="h-11 w-11 rounded-xl border-border hover:bg-secondary"
             >
-              Copy Error
+              <Copy className="w-4 h-4" />
             </Button>
             {onBack && (
-              <Button variant="outline" size="sm" onClick={onBack}>
+              <Button 
+                variant="outline" 
+                onClick={onBack}
+                className="h-11 rounded-xl border-border hover:bg-secondary"
+              >
                 Go Back
               </Button>
             )}
@@ -245,7 +289,9 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   if (!otherUser) {
     return (
       <div className="h-full flex items-center justify-center bg-chat-bg">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center animate-glow">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
