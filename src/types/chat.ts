@@ -1,0 +1,38 @@
+export interface Profile {
+  id: string;
+  user_id: string;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  status: string | null;
+  is_online: boolean;
+  last_seen: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  participants?: Profile[];
+  lastMessage?: Message;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  message_type: string;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+  sender?: Profile;
+}
+
+export interface ConversationWithDetails extends Conversation {
+  otherUser: Profile;
+  lastMessage: Message | null;
+  unreadCount: number;
+}
