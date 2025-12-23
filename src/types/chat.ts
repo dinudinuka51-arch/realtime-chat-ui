@@ -28,9 +28,18 @@ export interface Message {
   media_url?: string | null;
   media_type?: string | null;
   is_read: boolean;
+  read_at?: string | null;
   created_at: string;
   updated_at: string;
   sender?: Profile;
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
 }
 
 export interface ConversationWithDetails extends Conversation {

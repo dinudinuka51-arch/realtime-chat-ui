@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Message } from '@/types/chat';
 import { format } from 'date-fns';
-import { Trash2, Play, Image as ImageIcon, Video } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { EmojiPicker } from './EmojiPicker';
+import { MessageReactions } from './MessageReactions';
+import { ReadReceipt } from './ReadReceipt';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,8 +25,8 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps) => {
+  const { user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isLongPress, setIsLongPress] = useState(false);
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   const formatMessageTime = (dateStr: string) => {
@@ -30,7 +35,6 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
 
   const handleTouchStart = () => {
     const timer = setTimeout(() => {
-      setIsLongPress(true);
       setShowDeleteDialog(true);
     }, 500);
     setPressTimer(timer);
@@ -41,12 +45,21 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
       clearTimeout(pressTimer);
       setPressTimer(null);
     }
-    setIsLongPress(false);
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setShowDeleteDialog(true);
+  };
+
+  const handleAddReaction = async (emoji: string) => {
+    if (!user) return;
+
+    await supabase.from('message_reactions').insert({
+      message_id: message.id,
+      user_id: user.id,
+      emoji,
+    });
   };
 
   const renderMediaContent = () => {
@@ -78,57 +91,80 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
       );
     }
 
+    if (message.media_type === 'audio') {
+      return (
+        <div className="mb-2">
+          <audio 
+            src={message.media_url} 
+            controls 
+            className="w-full max-w-[250px]"
+          />
+        </div>
+      );
+    }
+
     return null;
   };
 
   return (
     <>
       <div
-        className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-message-in`}
+        className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-message-in group`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onContextMenu={handleContextMenu}
       >
-        <div
-          className={`max-w-[75%] px-4 py-2.5 ${
-            isSent ? 'message-bubble-sent' : 'message-bubble-received'
-          } cursor-pointer select-none`}
-        >
-          {renderMediaContent()}
-          
-          {message.content && (
-            <p className="text-[15px] leading-relaxed break-words">
-              {message.content}
-            </p>
-          )}
-          
+        {/* Emoji picker for received messages */}
+        {!isSent && (
+          <div className="self-end mb-2 mr-1">
+            <EmojiPicker onEmojiSelect={handleAddReaction} />
+          </div>
+        )}
+
+        <div className="flex flex-col">
           <div
-            className={`flex items-center gap-1 mt-1 ${
-              isSent ? 'justify-end' : 'justify-start'
-            }`}
+            className={`max-w-[75%] px-4 py-2.5 ${
+              isSent ? 'message-bubble-sent' : 'message-bubble-received'
+            } cursor-pointer select-none`}
           >
-            <span
-              className={`text-[10px] ${
-                isSent
-                  ? 'text-message-sent-foreground/70'
-                  : 'text-muted-foreground'
+            {renderMediaContent()}
+            
+            {message.content && message.media_type !== 'audio' && (
+              <p className="text-[15px] leading-relaxed break-words">
+                {message.content}
+              </p>
+            )}
+            
+            <div
+              className={`flex items-center gap-1 mt-1 ${
+                isSent ? 'justify-end' : 'justify-start'
               }`}
             >
-              {formatMessageTime(message.created_at)}
-            </span>
-            {isSent && (
               <span
                 className={`text-[10px] ${
-                  message.is_read
-                    ? 'text-message-sent-foreground'
-                    : 'text-message-sent-foreground/50'
+                  isSent
+                    ? 'text-message-sent-foreground/70'
+                    : 'text-muted-foreground'
                 }`}
               >
-                {message.is_read ? '✓✓' : '✓'}
+                {formatMessageTime(message.created_at)}
               </span>
-            )}
+              {isSent && (
+                <ReadReceipt isRead={message.is_read} readAt={message.read_at} />
+              )}
+            </div>
           </div>
+
+          {/* Message Reactions */}
+          <MessageReactions messageId={message.id} isSent={isSent} />
         </div>
+
+        {/* Emoji picker for sent messages */}
+        {isSent && (
+          <div className="self-end mb-2 ml-1">
+            <EmojiPicker onEmojiSelect={handleAddReaction} />
+          </div>
+        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

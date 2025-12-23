@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { MediaUpload } from './MediaUpload';
+import { VoiceRecorder } from './VoiceRecorder';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -45,10 +46,10 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       if (msgError) throw msgError;
       setMessages(data as Message[]);
 
-      // Mark messages as read
+      // Mark messages as read with timestamp
       await supabase
         .from('messages')
-        .update({ is_read: true })
+        .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .neq('sender_id', user?.id);
     } catch (err: any) {
@@ -142,7 +143,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
           if (newMsg.sender_id !== user?.id) {
             supabase
               .from('messages')
-              .update({ is_read: true })
+              .update({ is_read: true, read_at: new Date().toISOString() })
               .eq('id', newMsg.id);
           }
         }
@@ -424,6 +425,10 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
           <MediaUpload 
             conversationId={conversationId} 
             onMediaSent={() => {}} 
+          />
+          <VoiceRecorder 
+            conversationId={conversationId} 
+            onVoiceSent={() => {}} 
           />
           <Input
             ref={inputRef}
