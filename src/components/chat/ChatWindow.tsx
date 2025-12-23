@@ -15,7 +15,7 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -96,9 +96,16 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   };
 
   useEffect(() => {
+    // Wait for auth to finish loading before fetching
+    if (authLoading) return;
+    if (!user) {
+      setError('User not authenticated. Please log in again.');
+      setLoading(false);
+      return;
+    }
     fetchMessages();
     fetchOtherUser();
-  }, [conversationId]);
+  }, [conversationId, authLoading, user]);
 
   // Real-time subscription
   useEffect(() => {
