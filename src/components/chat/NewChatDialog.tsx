@@ -54,51 +54,62 @@ export const NewChatDialog = ({
 
   const startConversation = async (otherUserId: string) => {
     if (!user) return;
+    if (otherUserId === user.id) return;
+
     setCreating(true);
 
     try {
-      // Check if conversation already exists
-      const { data: myConvs } = await supabase
+      // 1) Fetch my conversation ids
+      const { data: myConvs, error: myConvsError } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
         .eq('user_id', user.id);
 
-      const { data: theirConvs } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', otherUserId);
+      if (myConvsError) throw myConvsError;
 
-      const myConvIds = myConvs?.map(c => c.conversation_id) || [];
-      const theirConvIds = theirConvs?.map(c => c.conversation_id) || [];
-      const existingConv = myConvIds.find(id => theirConvIds.includes(id));
+      const myConvIds = myConvs?.map((c) => c.conversation_id) ?? [];
 
-      if (existingConv) {
-        onConversationCreated(existingConv);
-        onOpenChange(false);
-        return;
+      // 2) Check if the other user is already in any of my conversations
+      if (myConvIds.length > 0) {
+        const { data: matches, error: matchesError } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .in('conversation_id', myConvIds)
+          .eq('user_id', otherUserId)
+          .limit(1);
+
+        if (matchesError) throw matchesError;
+
+        const existingConv = matches?.[0]?.conversation_id;
+        if (existingConv) {
+          onConversationCreated(existingConv);
+          onOpenChange(false);
+          return;
+        }
       }
 
-      // Create new conversation
-      const { data: newConv, error: convError } = await supabase
+      // 3) Create a new conversation WITHOUT selecting it back (RLS blocks selecting
+      //    until participants are added, which made the old code fail).
+      const conversationId = crypto.randomUUID();
+
+      const { error: convError } = await supabase
         .from('conversations')
-        .insert({})
-        .select()
-        .single();
+        .insert({ id: conversationId });
 
       if (convError) throw convError;
 
-      // Add participants
+      // 4) Add both participants
       const { error: partError } = await supabase
         .from('conversation_participants')
         .insert([
-          { conversation_id: newConv.id, user_id: user.id },
-          { conversation_id: newConv.id, user_id: otherUserId },
+          { conversation_id: conversationId, user_id: user.id },
+          { conversation_id: conversationId, user_id: otherUserId },
         ]);
 
       if (partError) throw partError;
 
       toast.success('Conversation started!');
-      onConversationCreated(newConv.id);
+      onConversationCreated(conversationId);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error creating conversation:', error);
