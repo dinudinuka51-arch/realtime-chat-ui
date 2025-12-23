@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { Message, Profile } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { Send, ArrowLeft, MoreVertical, Phone, Video, RefreshCw, AlertTriangle, Copy, WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { MessageBubble } from './MessageBubble';
+import { TypingIndicator } from './TypingIndicator';
+import { MediaUpload } from './MediaUpload';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -18,6 +23,7 @@ interface ChatWindowProps {
 export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const { user, loading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
+  const { isOtherUserTyping, handleTyping, stopTyping } = useTypingIndicator(conversationId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -95,9 +101,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     } catch (err: any) {
       console.error('Error fetching other user:', err);
       
-      // Retry on network errors (up to 3 times)
       if (err?.message?.includes('Failed to fetch') && retryCount < 3) {
-        console.log(`Retrying fetch... attempt ${retryCount + 1}`);
         setTimeout(() => fetchOtherUser(retryCount + 1), 1000 * (retryCount + 1));
         return;
       }
@@ -109,7 +113,6 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   };
 
   useEffect(() => {
-    // Wait for auth to finish loading before fetching
     if (authLoading) return;
     if (!user) {
       setError('User not authenticated. Please log in again.');
@@ -120,7 +123,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     fetchOtherUser();
   }, [conversationId, authLoading, user]);
 
-  // Real-time subscription
+  // Real-time subscription for new messages and deletions
   useEffect(() => {
     const channel = supabase
       .channel(`messages:${conversationId}`)
@@ -136,13 +139,25 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
           const newMsg = payload.new as Message;
           setMessages((prev) => [...prev, newMsg]);
           
-          // Mark as read if from other user
           if (newMsg.sender_id !== user?.id) {
             supabase
               .from('messages')
               .update({ is_read: true })
               .eq('id', newMsg.id);
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setMessages((prev) => prev.filter((m) => m.id !== deletedId));
         }
       )
       .subscribe();
@@ -157,13 +172,19 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isOtherUserTyping]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    handleTyping();
+  };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user || sending) return;
 
     setSending(true);
+    stopTyping();
     const messageContent = newMessage.trim();
     setNewMessage('');
 
@@ -175,18 +196,32 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       });
 
       if (error) throw error;
+      toast.success('Message sent');
       inputRef.current?.focus();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       setNewMessage(messageContent);
+      toast.error('Failed to send message');
     } finally {
       setSending(false);
     }
   };
 
-  const formatMessageTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return format(date, 'HH:mm');
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+      
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      toast.success('Message deleted for everyone');
+    } catch (error: any) {
+      console.error('Error deleting message:', error);
+      toast.error('Failed to delete message');
+    }
   };
 
   const formatDateHeader = (dateStr: string) => {
@@ -210,14 +245,13 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     return username.slice(0, 2).toUpperCase();
   };
 
-  // Copy error to clipboard
   const copyError = async () => {
     if (error) {
       await navigator.clipboard.writeText(error);
+      toast.success('Error copied to clipboard');
     }
   };
 
-  // Retry loading
   const handleRetry = useCallback(async () => {
     setRetrying(true);
     setError(null);
@@ -323,7 +357,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
             {otherUser.full_name || otherUser.username}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {otherUser.is_online ? 'Online' : 'Offline'}
+            {isOtherUserTyping ? 'Typing...' : otherUser.is_online ? 'Online' : 'Offline'}
           </p>
         </div>
 
@@ -367,59 +401,34 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
                       </span>
                     </div>
                   )}
-                  <div
-                    className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-message-in`}
-                  >
-                    <div
-                      className={`max-w-[75%] px-4 py-2.5 ${
-                        isSent ? 'message-bubble-sent' : 'message-bubble-received'
-                      }`}
-                    >
-                      <p className="text-[15px] leading-relaxed break-words">
-                        {message.content}
-                      </p>
-                      <div
-                        className={`flex items-center gap-1 mt-1 ${
-                          isSent ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
-                        <span
-                          className={`text-[10px] ${
-                            isSent
-                              ? 'text-message-sent-foreground/70'
-                              : 'text-muted-foreground'
-                          }`}
-                        >
-                          {formatMessageTime(message.created_at)}
-                        </span>
-                        {isSent && (
-                          <span
-                            className={`text-[10px] ${
-                              message.is_read
-                                ? 'text-message-sent-foreground'
-                                : 'text-message-sent-foreground/50'
-                            }`}
-                          >
-                            {message.is_read ? '✓✓' : '✓'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <MessageBubble
+                    message={message}
+                    isSent={isSent}
+                    onDelete={deleteMessage}
+                  />
                 </div>
               );
             })
+          )}
+          
+          {/* Typing Indicator */}
+          {isOtherUserTyping && (
+            <TypingIndicator username={otherUser.full_name || otherUser.username} />
           )}
         </div>
       </ScrollArea>
 
       {/* Input */}
       <div className="p-4 bg-card border-t border-border">
-        <form onSubmit={sendMessage} className="flex items-center gap-3">
+        <form onSubmit={sendMessage} className="flex items-center gap-2">
+          <MediaUpload 
+            conversationId={conversationId} 
+            onMediaSent={() => {}} 
+          />
           <Input
             ref={inputRef}
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Type a message..."
             className="flex-1 h-12 rounded-xl bg-secondary/50 border-0"
             disabled={sending}

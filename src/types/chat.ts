@@ -25,6 +25,8 @@ export interface Message {
   sender_id: string;
   content: string;
   message_type: string;
+  media_url?: string | null;
+  media_type?: string | null;
   is_read: boolean;
   created_at: string;
   updated_at: string;
