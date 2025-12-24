@@ -460,31 +460,33 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-4 bg-card border-t border-border">
-        <form onSubmit={sendMessage} className="flex items-center gap-2">
-          <MediaUpload 
-            conversationId={conversationId} 
-            onMediaSent={() => {}} 
-          />
-          <VoiceRecorder 
-            conversationId={conversationId} 
-            onVoiceSent={() => {}} 
-          />
+      <div className="p-2 sm:p-4 bg-card border-t border-border">
+        <form onSubmit={sendMessage} className="flex items-center gap-1 sm:gap-2">
+          <div className="flex flex-col gap-1">
+            <VoiceRecorder 
+              conversationId={conversationId} 
+              onVoiceSent={() => {}} 
+            />
+            <MediaUpload 
+              conversationId={conversationId} 
+              onMediaSent={() => {}} 
+            />
+          </div>
           <Input
             ref={inputRef}
             value={newMessage}
             onChange={handleInputChange}
             placeholder="Type a message..."
-            className="flex-1 h-12 rounded-xl bg-secondary/50 border-0"
+            className="flex-1 min-w-0 h-10 sm:h-12 rounded-xl bg-secondary/50 border-0 text-sm sm:text-base"
             disabled={sending}
           />
           <Button
             type="submit"
             size="icon"
-            className="w-12 h-12 rounded-xl"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shrink-0"
             disabled={!newMessage.trim() || sending}
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </form>
       </div>
