@@ -47,3 +47,25 @@ export interface ConversationWithDetails extends Conversation {
   lastMessage: Message | null;
   unreadCount: number;
 }
+
+export interface VoiceCall {
+  id: string;
+  conversation_id: string;
+  caller_id: string;
+  receiver_id: string;
+  status: 'calling' | 'accepted' | 'rejected' | 'ended' | 'missed';
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CallSignal {
+  id: string;
+  call_id: string;
+  sender_id: string;
+  receiver_id: string;
+  signal_type: 'offer' | 'answer' | 'ice-candidate';
+  signal_data: any;
+  created_at: string;
+}

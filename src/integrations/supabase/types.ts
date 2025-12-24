@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_signals: {
+        Row: {
+          call_id: string
+          created_at: string
+          id: string
+          receiver_id: string
+          sender_id: string
+          signal_data: Json
+          signal_type: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          id?: string
+          receiver_id: string
+          sender_id: string
+          signal_data: Json
+          signal_type: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+          signal_data?: Json
+          signal_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_signals_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voice_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -205,6 +243,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      voice_calls: {
+        Row: {
+          caller_id: string
+          conversation_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          receiver_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          caller_id: string
+          conversation_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          receiver_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          caller_id?: string
+          conversation_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          receiver_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_calls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
