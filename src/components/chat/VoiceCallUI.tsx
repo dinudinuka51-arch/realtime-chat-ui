@@ -1,4 +1,4 @@
-import { Phone, PhoneOff, Mic, MicOff, X } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Profile } from '@/types/chat';
@@ -9,11 +9,13 @@ interface VoiceCallUIProps {
   otherUser: Profile;
   isMuted: boolean;
   callDuration: number;
+  callError: string | null;
   formatDuration: (seconds: number) => string;
   onAccept: () => void;
   onReject: () => void;
   onEnd: () => void;
   onToggleMute: () => void;
+  onClearError: () => void;
 }
 
 export const VoiceCallUI = ({
@@ -21,11 +23,13 @@ export const VoiceCallUI = ({
   otherUser,
   isMuted,
   callDuration,
+  callError,
   formatDuration,
   onAccept,
   onReject,
   onEnd,
   onToggleMute,
+  onClearError,
 }: VoiceCallUIProps) => {
   const getInitials = (name: string | null, username: string) => {
     if (name) {
@@ -46,6 +50,33 @@ export const VoiceCallUI = ({
         return '';
     }
   };
+
+  // Show error dialog if there's an error
+  if (callError) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-xl"
+        >
+          <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center">
+            <div className="w-20 h-20 rounded-full bg-destructive/20 flex items-center justify-center">
+              <AlertCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Call Failed</h2>
+              <p className="text-muted-foreground">{callError}</p>
+            </div>
+            <Button onClick={onClearError} variant="secondary">
+              Close
+            </Button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
   if (callStatus === 'idle' || callStatus === 'ended') return null;
 

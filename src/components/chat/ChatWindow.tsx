@@ -42,12 +42,14 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
     callStatus,
     isMuted,
     callDuration,
+    callError,
     formatDuration,
     startCall,
     acceptCall,
     rejectCall,
     endCall,
     toggleMute,
+    clearError,
   } = useVoiceCall({
     conversationId,
     otherUserId: otherUser?.user_id || '',
@@ -404,11 +406,13 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
         otherUser={otherUser}
         isMuted={isMuted}
         callDuration={callDuration}
+        callError={callError}
         formatDuration={formatDuration}
         onAccept={acceptCall}
         onReject={rejectCall}
         onEnd={endCall}
         onToggleMute={toggleMute}
+        onClearError={clearError}
       />
 
       {/* Messages */}

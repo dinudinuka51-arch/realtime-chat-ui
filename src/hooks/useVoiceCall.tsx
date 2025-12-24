@@ -15,6 +15,7 @@ export const useVoiceCall = ({ conversationId, otherUserId }: UseVoiceCallProps)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'ringing' | 'connected' | 'ended'>('idle');
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [callError, setCallError] = useState<string | null>(null);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -275,9 +276,13 @@ export const useVoiceCall = ({ conversationId, otherUserId }: UseVoiceCallProps)
         }
       }, 30000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting call:', error);
-      toast.error('Failed to start call');
+      const errorMessage = error?.name === 'NotAllowedError' 
+        ? 'Microphone permission denied. Please allow microphone access to make calls.'
+        : error?.message || 'Failed to start call';
+      setCallError(errorMessage);
+      toast.error(errorMessage);
       cleanup();
       setCallStatus('idle');
     }
@@ -305,9 +310,13 @@ export const useVoiceCall = ({ conversationId, otherUserId }: UseVoiceCallProps)
       startCallTimer();
       toast.success('Call connected');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting call:', error);
-      toast.error('Failed to accept call');
+      const errorMessage = error?.name === 'NotAllowedError' 
+        ? 'Microphone permission denied. Please allow microphone access.'
+        : error?.message || 'Failed to accept call';
+      setCallError(errorMessage);
+      toast.error(errorMessage);
       cleanup();
       setCallStatus('idle');
     }
@@ -368,16 +377,20 @@ export const useVoiceCall = ({ conversationId, otherUserId }: UseVoiceCallProps)
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const clearError = () => setCallError(null);
+
   return {
     callStatus,
     currentCall,
     isMuted,
     callDuration,
+    callError,
     formatDuration,
     startCall,
     acceptCall,
     rejectCall,
     endCall,
     toggleMute,
+    clearError,
   };
 };
