@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { Message, Profile } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +16,7 @@ import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { MediaUpload } from './MediaUpload';
 import { VoiceRecorder } from './VoiceRecorder';
+import { VoiceCallUI } from './VoiceCallUI';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -34,6 +36,22 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const [retrying, setRetrying] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Voice call hook - only initialize when otherUser is available
+  const {
+    callStatus,
+    isMuted,
+    callDuration,
+    formatDuration,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+  } = useVoiceCall({
+    conversationId,
+    otherUserId: otherUser?.user_id || '',
+  });
 
   const fetchMessages = async () => {
     try {
@@ -363,7 +381,12 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={startCall}
+          >
             <Phone className="w-5 h-5" />
           </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground">
@@ -374,6 +397,19 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
           </Button>
         </div>
       </div>
+
+      {/* Voice Call UI */}
+      <VoiceCallUI
+        callStatus={callStatus}
+        otherUser={otherUser}
+        isMuted={isMuted}
+        callDuration={callDuration}
+        formatDuration={formatDuration}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 chat-pattern" ref={scrollRef}>
