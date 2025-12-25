@@ -1,13 +1,12 @@
-import { MessageCircle, Shield, Zap, Globe } from 'lucide-react';
+import { Shield, Zap, Globe } from 'lucide-react';
+import romanLogo from '@/assets/roman-logo.png';
 
 export const WelcomeScreen = () => {
   return (
     <div className="h-full flex flex-col items-center justify-center bg-chat-bg p-8">
       <div className="max-w-md text-center animate-fade-in">
         {/* Logo */}
-        <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-primary mb-6 shadow-lg">
-          <MessageCircle className="w-12 h-12 text-primary-foreground" />
-        </div>
+        <img src={romanLogo} alt="Roman Logo" className="w-24 h-24 rounded-3xl mb-6 shadow-lg mx-auto" />
 
         <h1 className="text-3xl font-bold text-foreground mb-3">
           Welcome to Roman

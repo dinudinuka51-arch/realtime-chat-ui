@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { MessageCircle, Loader2, Mail, Lock, User, UserCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, User, UserCircle } from 'lucide-react';
+import romanLogo from '@/assets/roman-logo.png';
 
 export const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -46,9 +47,7 @@ export const AuthForm = () => {
       <div className="w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary mb-4 shadow-lg">
-            <MessageCircle className="w-10 h-10 text-primary-foreground" />
-          </div>
+          <img src={romanLogo} alt="Roman Logo" className="w-20 h-20 rounded-2xl mb-4 shadow-lg mx-auto" />
           <h1 className="text-3xl font-bold text-foreground">Roman</h1>
           <p className="text-muted-foreground mt-2">
             {isLogin ? 'Sign in to continue messaging' : 'Create your account'}
