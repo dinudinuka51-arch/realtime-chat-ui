@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
+import { useVoiceCallContext } from '@/contexts/VoiceCallContext';
 import { Message, Profile } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,7 +16,6 @@ import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { MediaUpload } from './MediaUpload';
 import { VoiceRecorder } from './VoiceRecorder';
-import { VoiceCallUI } from './VoiceCallUI';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -27,6 +26,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const { user, loading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
   const { isOtherUserTyping, handleTyping, stopTyping } = useTypingIndicator(conversationId);
+  const { startCall } = useVoiceCallContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,24 +36,6 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   const [retrying, setRetrying] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Voice call hook - only initialize when otherUser is available
-  const {
-    callStatus,
-    isMuted,
-    callDuration,
-    callError,
-    formatDuration,
-    startCall,
-    acceptCall,
-    rejectCall,
-    endCall,
-    toggleMute,
-    clearError,
-  } = useVoiceCall({
-    conversationId,
-    otherUserId: otherUser?.user_id || '',
-  });
 
   const fetchMessages = async () => {
     try {
@@ -387,7 +369,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
             variant="ghost" 
             size="icon" 
             className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-            onClick={startCall}
+            onClick={() => startCall(conversationId, otherUser.user_id)}
           >
             <Phone className="w-5 h-5" />
           </Button>
@@ -399,21 +381,6 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
           </Button>
         </div>
       </div>
-
-      {/* Voice Call UI */}
-      <VoiceCallUI
-        callStatus={callStatus}
-        otherUser={otherUser}
-        isMuted={isMuted}
-        callDuration={callDuration}
-        callError={callError}
-        formatDuration={formatDuration}
-        onAccept={acceptCall}
-        onReject={rejectCall}
-        onEnd={endCall}
-        onToggleMute={toggleMute}
-        onClearError={clearError}
-      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 chat-pattern" ref={scrollRef}>
