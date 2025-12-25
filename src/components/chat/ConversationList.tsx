@@ -114,7 +114,7 @@ export const ConversationList = ({
     fetchConversations();
   }, [user]);
 
-  // Subscribe to new messages
+  // Subscribe to message changes (new messages and read status updates)
   useEffect(() => {
     if (!user) return;
 
@@ -123,6 +123,21 @@ export const ConversationList = ({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages' },
+        () => {
+          // Update when messages are read
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages' },
         () => {
           fetchConversations();
         }

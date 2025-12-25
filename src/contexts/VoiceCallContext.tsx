@@ -49,6 +49,7 @@ export const VoiceCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const pendingIceCandidatesRef = useRef<RTCIceCandidate[]>([]);
   const isSettingRemoteDescRef = useRef(false);
   const currentCallIdRef = useRef<string | null>(null);
+  const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
 
   // Better ICE servers with TURN fallback
   const iceServers: RTCConfiguration = {
@@ -113,6 +114,7 @@ export const VoiceCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     pendingIceCandidatesRef.current = [];
+    pendingOfferRef.current = null;
     isSettingRemoteDescRef.current = false;
     currentCallIdRef.current = null;
     setCallDuration(0);
@@ -243,29 +245,9 @@ export const VoiceCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       if (signal.signal_type === 'offer') {
-        console.log('[VoiceCall] Processing offer');
-        
-        if (!peerConnectionRef.current) {
-          await setupPeerConnection();
-        }
-        
-        isSettingRemoteDescRef.current = true;
-        await peerConnectionRef.current!.setRemoteDescription(
-          new RTCSessionDescription(signal.signal_data)
-        );
-        isSettingRemoteDescRef.current = false;
-
-        // Process pending ICE candidates
-        console.log('[VoiceCall] Processing', pendingIceCandidatesRef.current.length, 'pending ICE candidates');
-        for (const candidate of pendingIceCandidatesRef.current) {
-          await peerConnectionRef.current!.addIceCandidate(candidate);
-        }
-        pendingIceCandidatesRef.current = [];
-
-        const answer = await peerConnectionRef.current!.createAnswer();
-        await peerConnectionRef.current!.setLocalDescription(answer);
-        await sendSignal('answer', answer);
-        console.log('[VoiceCall] Answer sent');
+        console.log('[VoiceCall] Storing offer for later processing');
+        // Store the offer - will be processed when call is accepted
+        pendingOfferRef.current = signal.signal_data;
 
       } else if (signal.signal_type === 'answer') {
         console.log('[VoiceCall] Processing answer');
@@ -490,8 +472,65 @@ export const VoiceCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ringtoneRef.current?.pause();
       setCallError(null);
 
-      // Setup WebRTC first (this will process the pending offer)
+      // Setup WebRTC
       await setupPeerConnection();
+
+      // Process the stored offer
+      if (pendingOfferRef.current) {
+        console.log('[VoiceCall] Processing stored offer');
+        isSettingRemoteDescRef.current = true;
+        await peerConnectionRef.current!.setRemoteDescription(
+          new RTCSessionDescription(pendingOfferRef.current)
+        );
+        isSettingRemoteDescRef.current = false;
+
+        // Process pending ICE candidates
+        console.log('[VoiceCall] Processing', pendingIceCandidatesRef.current.length, 'pending ICE candidates');
+        for (const candidate of pendingIceCandidatesRef.current) {
+          await peerConnectionRef.current!.addIceCandidate(candidate);
+        }
+        pendingIceCandidatesRef.current = [];
+
+        // Create and send answer
+        const answer = await peerConnectionRef.current!.createAnswer();
+        await peerConnectionRef.current!.setLocalDescription(answer);
+        await sendSignal('answer', answer);
+        console.log('[VoiceCall] Answer sent');
+
+        pendingOfferRef.current = null;
+      } else {
+        console.log('[VoiceCall] No pending offer, fetching from database');
+        // Fetch the offer from database if not in memory
+        const { data: signals } = await supabase
+          .from('call_signals')
+          .select('*')
+          .eq('call_id', currentCall.id)
+          .eq('signal_type', 'offer')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (signals && signals.length > 0) {
+          const offerSignal = signals[0];
+          const offerData = offerSignal.signal_data as unknown as RTCSessionDescriptionInit;
+          isSettingRemoteDescRef.current = true;
+          await peerConnectionRef.current!.setRemoteDescription(
+            new RTCSessionDescription(offerData)
+          );
+          isSettingRemoteDescRef.current = false;
+
+          // Process pending ICE candidates
+          for (const candidate of pendingIceCandidatesRef.current) {
+            await peerConnectionRef.current!.addIceCandidate(candidate);
+          }
+          pendingIceCandidatesRef.current = [];
+
+          // Create and send answer
+          const answer = await peerConnectionRef.current!.createAnswer();
+          await peerConnectionRef.current!.setLocalDescription(answer);
+          await sendSignal('answer', answer);
+          console.log('[VoiceCall] Answer sent from fetched offer');
+        }
+      }
 
       // Update call status
       await supabase
