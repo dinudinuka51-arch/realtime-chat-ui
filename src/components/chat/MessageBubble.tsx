@@ -34,6 +34,9 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
   };
 
   const handleTouchStart = () => {
+    // Only allow delete for sent messages (sender only)
+    if (!isSent) return;
+    
     const timer = setTimeout(() => {
       setShowDeleteDialog(true);
     }, 500);
@@ -48,6 +51,9 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
+    // Only allow delete for sent messages (sender only)
+    if (!isSent) return;
+    
     e.preventDefault();
     setShowDeleteDialog(true);
   };
