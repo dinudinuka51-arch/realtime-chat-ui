@@ -10,7 +10,7 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const duration = 5000; // 5 seconds
+    const duration = 2000; // 2 seconds
     const interval = 50; // Update every 50ms
     const increment = (interval / duration) * 100;
 
