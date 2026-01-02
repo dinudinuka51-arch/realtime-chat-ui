@@ -4,9 +4,11 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { ChatLayout } from '@/components/chat/ChatLayout';
 import { RomanFeed } from '@/components/feed/RomanFeed';
 import { AdminPanel } from '@/components/admin/AdminPanel';
+import { ProfileView } from '@/components/profile/ProfileView';
 import { SplashScreen } from '@/components/SplashScreen';
+import { BottomNav } from '@/components/navigation/BottomNav';
 
-type AppView = 'chat' | 'feed' | 'admin';
+type AppView = 'chat' | 'feed' | 'profile' | 'admin';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -51,6 +53,8 @@ const Index = () => {
         return <RomanFeed onBack={() => setCurrentView('chat')} />;
       case 'admin':
         return <AdminPanel onBack={() => setCurrentView('chat')} />;
+      case 'profile':
+        return <ProfileView onBack={() => setCurrentView('chat')} />;
       default:
         return (
           <ChatLayout 
@@ -61,7 +65,22 @@ const Index = () => {
     }
   };
 
-  return renderView();
+  // Determine bottom nav visibility (hide on admin view)
+  const showBottomNav = currentView !== 'admin';
+  // Map current view to bottom nav view type
+  const bottomNavView = currentView === 'admin' ? 'chat' : currentView;
+
+  return (
+    <>
+      {renderView()}
+      {showBottomNav && (
+        <BottomNav 
+          currentView={bottomNavView} 
+          onNavigate={(view) => setCurrentView(view)} 
+        />
+      )}
+    </>
+  );
 };
 
 export default Index;

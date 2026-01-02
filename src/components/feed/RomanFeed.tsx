@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Post } from '@/types/feed';
 import { CreatePostForm } from './CreatePostForm';
 import { PostCard } from './PostCard';
+import { StoriesBar } from '@/components/stories/StoriesBar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -124,12 +125,12 @@ export const RomanFeed = ({ onBack }: RomanFeedProps) => {
   }, [fetchPosts]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 md:pb-0">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -142,6 +143,9 @@ export const RomanFeed = ({ onBack }: RomanFeedProps) => {
           </Button>
         </div>
       </div>
+
+      {/* Stories Bar */}
+      <StoriesBar />
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
