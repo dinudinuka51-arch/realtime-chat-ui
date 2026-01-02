@@ -76,8 +76,17 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
       // Fetch posts
       const { data: postsData } = await supabase
         .from('posts')
-        .select(`*, profile:profiles!posts_user_id_fkey(username)`)
+        .select('*')
         .order('created_at', { ascending: false });
+
+      // Map posts with user profiles
+      const postsWithProfiles = (postsData || []).map(post => {
+        const userProfile = usersData?.find(u => u.user_id === post.user_id);
+        return {
+          ...post,
+          profile: userProfile ? { username: userProfile.username } : undefined
+        };
+      });
 
       // Fetch messages count
       const { count: messagesCount } = await supabase
@@ -90,7 +99,7 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         .select('*');
 
       setUsers(usersData || []);
-      setPosts(postsData || []);
+      setPosts(postsWithProfiles);
       setAdmins(adminsData || []);
       setStats({
         totalUsers: usersData?.length || 0,
