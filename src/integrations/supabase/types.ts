@@ -120,6 +120,51 @@ export type Database = {
         }
         Relationships: []
       }
+      highlight_stories: {
+        Row: {
+          added_at: string
+          caption: string | null
+          highlight_id: string
+          id: string
+          media_type: string
+          media_url: string
+          story_id: string
+        }
+        Insert: {
+          added_at?: string
+          caption?: string | null
+          highlight_id: string
+          id?: string
+          media_type?: string
+          media_url: string
+          story_id: string
+        }
+        Update: {
+          added_at?: string
+          caption?: string | null
+          highlight_id?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "highlight_stories_highlight_id_fkey"
+            columns: ["highlight_id"]
+            isOneToOne: false
+            referencedRelation: "story_highlights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "highlight_stories_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -381,6 +426,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      story_highlights: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_highlights_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
