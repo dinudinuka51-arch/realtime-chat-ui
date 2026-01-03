@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,8 +10,10 @@ import { DeleteAccountDialog } from '@/components/chat/DeleteAccountDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from 'next-themes';
+import { useNotifications } from '@/hooks/useNotifications';
 import { toast } from 'sonner';
 import romanLogo from '@/assets/roman-logo.png';
+import { ProfileSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface ProfileViewProps {
   onBack: () => void;
@@ -20,6 +22,7 @@ interface ProfileViewProps {
 export const ProfileView = ({ onBack }: ProfileViewProps) => {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { permission, requestPermission, isSupported } = useNotifications();
   const [profile, setProfile] = useState<{
     username: string;
     full_name?: string;
@@ -29,6 +32,7 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [stats, setStats] = useState({ posts: 0, stories: 0 });
+  const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -40,14 +44,15 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
       .single();
     
     if (data) setProfile(data);
+    setLoading(false);
   }, [user]);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
 
     const [postsResult, storiesResult] = await Promise.all([
-      supabase.from('posts').select('id', { count: 'exact' }).eq('user_id', user.id),
-      supabase.from('stories').select('id', { count: 'exact' }).eq('user_id', user.id),
+      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('stories').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
     setStats({
@@ -57,9 +62,21 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
   }, [user]);
 
   useEffect(() => {
-    fetchProfile();
-    fetchStats();
+    Promise.all([fetchProfile(), fetchStats()]);
   }, [fetchProfile, fetchStats]);
+
+  const handleNotificationToggle = async () => {
+    if (permission === 'granted') {
+      toast.info('To disable notifications, use your browser settings');
+    } else {
+      const granted = await requestPermission();
+      if (granted) {
+        toast.success('Notifications enabled!');
+      } else {
+        toast.error('Notifications permission denied');
+      }
+    }
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -82,6 +99,10 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <ProfileSkeleton />
+        ) : (
+          <>
         {/* Profile Card */}
         <Card>
           <CardContent className="p-6">
@@ -125,6 +146,26 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
               <Settings className="h-4 w-4" />
               Settings
             </h3>
+            <Separator />
+
+            {/* Notifications Toggle */}
+            {isSupported && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {permission === 'granted' ? (
+                    <Bell className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <BellOff className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <span>Push Notifications</span>
+                </div>
+                <Switch
+                  checked={permission === 'granted'}
+                  onCheckedChange={handleNotificationToggle}
+                />
+              </div>
+            )}
+
             <Separator />
 
             {/* Theme Toggle */}
@@ -173,6 +214,8 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
           <p>Roman v1.0.0</p>
           <p>Powered by Roman Technologies</p>
         </div>
+          </>
+        )}
       </div>
 
       {/* Dialogs */}

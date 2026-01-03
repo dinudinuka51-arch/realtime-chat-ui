@@ -324,10 +324,20 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
   }
 
   if (!otherUser) {
+    // Show skeleton instead of spinner for better perceived performance
     return (
-      <div className="h-full flex items-center justify-center bg-chat-bg">
-        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center animate-glow">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="h-full flex flex-col bg-chat-bg">
+        <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
+          <div className="w-10 h-10 rounded-full bg-secondary animate-pulse" />
+          <div className="flex-1 space-y-1">
+            <div className="h-4 w-24 bg-secondary rounded animate-pulse" />
+            <div className="h-3 w-16 bg-secondary rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="flex-1 p-4 space-y-3">
+          <div className="flex justify-start"><div className="h-10 w-48 bg-secondary rounded-2xl animate-pulse" /></div>
+          <div className="flex justify-end"><div className="h-10 w-32 bg-secondary rounded-2xl animate-pulse" /></div>
+          <div className="flex justify-start"><div className="h-10 w-40 bg-secondary rounded-2xl animate-pulse" /></div>
         </div>
       </div>
     );
@@ -386,8 +396,11 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       <ScrollArea className="flex-1 chat-pattern" ref={scrollRef}>
         <div className="p-4 space-y-3">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="space-y-3">
+              <div className="flex justify-start"><div className="h-10 w-48 bg-secondary rounded-2xl animate-pulse" /></div>
+              <div className="flex justify-end"><div className="h-10 w-32 bg-secondary rounded-2xl animate-pulse" /></div>
+              <div className="flex justify-start"><div className="h-10 w-56 bg-secondary rounded-2xl animate-pulse" /></div>
+              <div className="flex justify-end"><div className="h-10 w-40 bg-secondary rounded-2xl animate-pulse" /></div>
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center py-12">

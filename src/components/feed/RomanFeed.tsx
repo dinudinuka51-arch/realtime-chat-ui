@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Post } from '@/types/feed';
@@ -6,9 +6,10 @@ import { CreatePostForm } from './CreatePostForm';
 import { PostCard } from './PostCard';
 import { StoriesBar } from '@/components/stories/StoriesBar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import romanLogo from '@/assets/roman-logo.png';
+import { FeedSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface RomanFeedProps {
   onBack: () => void;
@@ -37,39 +38,49 @@ export const RomanFeed = ({ onBack }: RomanFeedProps) => {
 
       if (postsError) throw postsError;
 
-      // Fetch likes count and user like status for each post
-      const postsWithStats = await Promise.all(
-        (postsData || []).map(async (post: any) => {
-          const { count: likesCount } = await supabase
-            .from('post_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
 
-          const { count: commentsCount } = await supabase
-            .from('post_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+      const postIds = postsData.map(p => p.id);
 
-          let isLiked = false;
-          if (user) {
-            const { data: likeData } = await supabase
-              .from('post_likes')
-              .select('id')
-              .eq('post_id', post.id)
-              .eq('user_id', user.id)
-              .maybeSingle();
-            isLiked = !!likeData;
-          }
+      // Batch fetch: Get all likes at once
+      const { data: allLikes } = await supabase
+        .from('post_likes')
+        .select('post_id, user_id')
+        .in('post_id', postIds);
 
-          return {
-            ...post,
-            profile: post.profile,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            is_liked: isLiked,
-          };
-        })
-      );
+      // Batch fetch: Get all comments counts at once
+      const { data: allComments } = await supabase
+        .from('post_comments')
+        .select('post_id')
+        .in('post_id', postIds);
+
+      // Build maps for quick lookup
+      const likesCountMap = new Map<string, number>();
+      const userLikesMap = new Map<string, boolean>();
+      allLikes?.forEach(like => {
+        likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+        if (like.user_id === user?.id) {
+          userLikesMap.set(like.post_id, true);
+        }
+      });
+
+      const commentsCountMap = new Map<string, number>();
+      allComments?.forEach(comment => {
+        commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+      });
+
+      // Build posts with stats
+      const postsWithStats = postsData.map((post: any) => ({
+        ...post,
+        profile: post.profile,
+        likes_count: likesCountMap.get(post.id) || 0,
+        comments_count: commentsCountMap.get(post.id) || 0,
+        is_liked: userLikesMap.get(post.id) || false,
+      }));
 
       setPosts(postsWithStats);
     } catch (error) {
@@ -161,9 +172,7 @@ export const RomanFeed = ({ onBack }: RomanFeedProps) => {
 
         {/* Posts Feed */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <FeedSkeleton />
         ) : posts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No posts yet. Be the first to share!</p>

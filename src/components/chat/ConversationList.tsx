@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ConversationWithDetails, Profile, Message } from '@/types/chat';
@@ -9,6 +9,7 @@ import { Search, MessageSquarePlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { NewChatDialog } from './NewChatDialog';
+import { ConversationListSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface ConversationListProps {
   selectedConversation: string | null;
@@ -25,11 +26,11 @@ export const ConversationList = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Get all conversations where user is a participant
+      // Single optimized query to get all conversation data
       const { data: participations, error: partError } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
@@ -45,60 +46,84 @@ export const ConversationList = ({
 
       const conversationIds = participations.map(p => p.conversation_id);
 
-      // Get conversation details with other participants
-      const conversationsWithDetails: ConversationWithDetails[] = [];
+      // Batch fetch: Get all other participants at once
+      const { data: allParticipants } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id, user_id')
+        .in('conversation_id', conversationIds)
+        .neq('user_id', user.id);
 
-      for (const convId of conversationIds) {
-        // Get other participant
-        const { data: otherParticipant } = await supabase
-          .from('conversation_participants')
-          .select('user_id')
-          .eq('conversation_id', convId)
-          .neq('user_id', user.id)
-          .single();
-
-        if (otherParticipant) {
-          // Get their profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', otherParticipant.user_id)
-            .single();
-
-          // Get last message
-          const { data: lastMessage } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', convId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          // Get unread count
-          const { count: unreadCount } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', convId)
-            .eq('is_read', false)
-            .neq('sender_id', user.id);
-
-          if (profile) {
-            conversationsWithDetails.push({
-              id: convId,
-              created_at: '',
-              updated_at: '',
-              otherUser: profile as Profile,
-              lastMessage: lastMessage as Message | null,
-              unreadCount: unreadCount || 0,
-            });
-          }
-        }
+      if (!allParticipants || allParticipants.length === 0) {
+        setConversations([]);
+        setLoading(false);
+        return;
       }
+
+      // Get all unique user IDs
+      const userIds = [...new Set(allParticipants.map(p => p.user_id))];
+
+      // Batch fetch: Get all profiles at once
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', userIds);
+
+      // Batch fetch: Get latest messages for all conversations
+      const { data: allMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: false });
+
+      // Batch fetch: Get unread counts
+      const { data: unreadMessages } = await supabase
+        .from('messages')
+        .select('conversation_id')
+        .in('conversation_id', conversationIds)
+        .eq('is_read', false)
+        .neq('sender_id', user.id);
+
+      // Build conversation map
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const participantMap = new Map(allParticipants.map(p => [p.conversation_id, p.user_id]));
+      
+      // Group messages by conversation and get latest
+      const latestMessageMap = new Map<string, any>();
+      allMessages?.forEach(msg => {
+        if (!latestMessageMap.has(msg.conversation_id)) {
+          latestMessageMap.set(msg.conversation_id, msg);
+        }
+      });
+
+      // Count unreads per conversation
+      const unreadCountMap = new Map<string, number>();
+      unreadMessages?.forEach(msg => {
+        unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
+      });
+
+      // Build final conversations array
+      const conversationsWithDetails: ConversationWithDetails[] = conversationIds
+        .map(convId => {
+          const otherUserId = participantMap.get(convId);
+          const profile = otherUserId ? profileMap.get(otherUserId) : null;
+          
+          if (!profile) return null;
+
+          return {
+            id: convId,
+            created_at: '',
+            updated_at: '',
+            otherUser: profile as Profile,
+            lastMessage: latestMessageMap.get(convId) as Message | null,
+            unreadCount: unreadCountMap.get(convId) || 0,
+          };
+        })
+        .filter((c): c is ConversationWithDetails => c !== null);
 
       // Sort by last message time
       conversationsWithDetails.sort((a, b) => {
-        const aTime = a.lastMessage?.created_at || a.created_at;
-        const bTime = b.lastMessage?.created_at || b.created_at;
+        const aTime = a.lastMessage?.created_at || '';
+        const bTime = b.lastMessage?.created_at || '';
         return new Date(bTime).getTime() - new Date(aTime).getTime();
       });
 
@@ -108,13 +133,13 @@ export const ConversationList = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchConversations();
-  }, [user]);
+  }, [fetchConversations]);
 
-  // Subscribe to message changes (new messages and read status updates)
+  // Subscribe to message changes
   useEffect(() => {
     if (!user) return;
 
@@ -122,44 +147,30 @@ export const ConversationList = ({
       .channel('conversations-updates')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => {
-          fetchConversations();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'messages' },
-        () => {
-          // Update when messages are read
-          fetchConversations();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'messages' },
-        () => {
-          fetchConversations();
-        }
+        { event: '*', schema: 'public', table: 'messages' },
+        () => fetchConversations()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchConversations]);
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.otherUser.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.otherUser.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredConversations = useMemo(() => 
+    conversations.filter(conv =>
+      conv.otherUser.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.otherUser.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    [conversations, searchQuery]
   );
 
-  const getInitials = (name: string | null, username: string) => {
+  const getInitials = useCallback((name: string | null, username: string) => {
     if (name) {
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
     return username.slice(0, 2).toUpperCase();
-  };
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
@@ -191,9 +202,7 @@ export const ConversationList = ({
       <ScrollArea className="flex-1">
         <div className="p-2">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
+            <ConversationListSkeleton />
           ) : filteredConversations.length === 0 ? (
             <div className="text-center py-8 px-4">
               <MessageSquarePlus className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
