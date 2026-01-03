@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +7,7 @@ import { StoryViewer } from './StoryViewer';
 import { CreateStory } from './CreateStory';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { StoriesBarSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface Story {
   id: string;
@@ -37,21 +38,23 @@ export const StoriesBar = () => {
   const [selectedUserIndex, setSelectedUserIndex] = useState<number | null>(null);
   const [showCreateStory, setShowCreateStory] = useState(false);
   const [userProfile, setUserProfile] = useState<{ username: string; avatar_url?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchStories = useCallback(async () => {
-    const { data: stories, error } = await supabase
-      .from('stories')
-      .select(`
-        *,
-        profile:profiles!stories_user_id_fkey(username, avatar_url)
-      `)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
+    try {
+      const { data: stories, error } = await supabase
+        .from('stories')
+        .select(`
+          *,
+          profile:profiles!stories_user_id_fkey(username, avatar_url)
+        `)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching stories:', error);
-      return;
-    }
+      if (error) {
+        console.error('Error fetching stories:', error);
+        return;
+      }
 
     // Fetch viewed stories for current user
     if (user) {
@@ -103,7 +106,10 @@ export const StoriesBar = () => {
       return 0;
     });
 
-    setUserStoriesGroups(groups);
+      setUserStoriesGroups(groups);
+    } finally {
+      setLoading(false);
+    }
   }, [user, viewedStoryIds]);
 
   const fetchUserProfile = useCallback(async () => {
@@ -154,6 +160,10 @@ export const StoriesBar = () => {
     }
     return index;
   };
+
+  if (loading) {
+    return <StoriesBarSkeleton />;
+  }
 
   return (
     <>

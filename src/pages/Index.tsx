@@ -1,19 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { ChatLayout } from '@/components/chat/ChatLayout';
-import { RomanFeed } from '@/components/feed/RomanFeed';
-import { AdminPanel } from '@/components/admin/AdminPanel';
-import { ProfileView } from '@/components/profile/ProfileView';
 import { SplashScreen } from '@/components/SplashScreen';
 import { BottomNav } from '@/components/navigation/BottomNav';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Lazy load non-critical views
+const RomanFeed = lazy(() => import('@/components/feed/RomanFeed').then(m => ({ default: m.RomanFeed })));
+const AdminPanel = lazy(() => import('@/components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const ProfileView = lazy(() => import('@/components/profile/ProfileView').then(m => ({ default: m.ProfileView })));
 
 type AppView = 'chat' | 'feed' | 'profile' | 'admin';
 
+const ViewSkeleton = () => (
+  <div className="min-h-screen bg-background p-4 space-y-4">
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-10 w-10 rounded-full" />
+      <Skeleton className="h-6 w-32" />
+    </div>
+    <Skeleton className="h-48 w-full rounded-xl" />
+    <Skeleton className="h-32 w-full rounded-xl" />
+    <Skeleton className="h-32 w-full rounded-xl" />
+  </div>
+);
+
 const Index = () => {
   const { user, loading } = useAuth();
+  const { permission, requestPermission, isSupported } = useNotifications();
   const [showSplash, setShowSplash] = useState(true);
   const [currentView, setCurrentView] = useState<AppView>('chat');
+  const [notificationPrompted, setNotificationPrompted] = useState(false);
 
   // Check if splash was already shown this session
   useEffect(() => {
@@ -23,10 +41,26 @@ const Index = () => {
     }
   }, []);
 
-  const handleSplashComplete = () => {
+  // Request notification permission once user is logged in
+  useEffect(() => {
+    if (user && isSupported && permission === 'default' && !notificationPrompted) {
+      setNotificationPrompted(true);
+      // Delay the prompt slightly for better UX
+      const timer = setTimeout(() => {
+        requestPermission();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isSupported, permission, notificationPrompted, requestPermission]);
+
+  const handleSplashComplete = useCallback(() => {
     sessionStorage.setItem('splashShown', 'true');
     setShowSplash(false);
-  };
+  }, []);
+
+  const handleNavigate = useCallback((view: AppView) => {
+    setCurrentView(view);
+  }, []);
 
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
@@ -35,9 +69,9 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading Roman...</p>
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -50,16 +84,28 @@ const Index = () => {
   const renderView = () => {
     switch (currentView) {
       case 'feed':
-        return <RomanFeed onBack={() => setCurrentView('chat')} />;
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <RomanFeed onBack={() => handleNavigate('chat')} />
+          </Suspense>
+        );
       case 'admin':
-        return <AdminPanel onBack={() => setCurrentView('chat')} />;
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <AdminPanel onBack={() => handleNavigate('chat')} />
+          </Suspense>
+        );
       case 'profile':
-        return <ProfileView onBack={() => setCurrentView('chat')} />;
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <ProfileView onBack={() => handleNavigate('chat')} />
+          </Suspense>
+        );
       default:
         return (
           <ChatLayout 
-            onNavigateToFeed={() => setCurrentView('feed')}
-            onNavigateToAdmin={() => setCurrentView('admin')}
+            onNavigateToFeed={() => handleNavigate('feed')}
+            onNavigateToAdmin={() => handleNavigate('admin')}
           />
         );
     }
@@ -76,7 +122,7 @@ const Index = () => {
       {showBottomNav && (
         <BottomNav 
           currentView={bottomNavView} 
-          onNavigate={(view) => setCurrentView(view)} 
+          onNavigate={handleNavigate} 
         />
       )}
     </>
