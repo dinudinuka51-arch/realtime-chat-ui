@@ -1,13 +1,23 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, Pause, Play, Bookmark } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { X, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
-import { AddToHighlightDialog } from './AddToHighlightDialog';
-import { useAuth } from '@/hooks/useAuth';
 
-// Optimized video component with preloading and fast playback
+interface HighlightStory {
+  id: string;
+  media_url: string;
+  media_type: string;
+  caption?: string | null;
+}
+
+interface HighlightViewerProps {
+  stories: HighlightStory[];
+  highlightTitle: string;
+  initialIndex?: number;
+  onClose: () => void;
+}
+
+// Optimized video component with preloading
 const OptimizedVideo = memo(({ 
   src, 
   isActive,
@@ -45,43 +55,25 @@ const OptimizedVideo = memo(({
 
 OptimizedVideo.displayName = 'OptimizedVideo';
 
-interface Story {
-  id: string;
-  media_url: string;
-  media_type: string;
-  caption?: string;
-  created_at: string;
-  user_id: string;
-  profile?: {
-    username: string;
-    avatar_url?: string;
-  };
-}
-
-interface StoryViewerProps {
-  stories: Story[];
-  initialIndex: number;
-  onClose: () => void;
-  onStoryViewed: (storyId: string) => void;
-}
-
-export const StoryViewer = ({
+export const HighlightViewer = ({
   stories,
-  initialIndex,
+  highlightTitle,
+  initialIndex = 0,
   onClose,
-  onStoryViewed,
-}: StoryViewerProps) => {
+}: HighlightViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
 
   const currentStory = stories[currentIndex];
-  const storyDuration = currentStory?.media_type === 'video' ? 30000 : 5000;
+  const storyDuration = currentStory?.media_type === 'video' ? 15000 : 5000;
 
   const goToNext = useCallback(() => {
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setProgress(0);
+      setMediaLoaded(false);
     } else {
       onClose();
     }
@@ -91,17 +83,23 @@ export const StoryViewer = ({
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setProgress(0);
+      setMediaLoaded(false);
     }
   }, [currentIndex]);
 
+  // Preload next media
   useEffect(() => {
-    if (currentStory) {
-      onStoryViewed(currentStory.id);
+    if (currentIndex < stories.length - 1) {
+      const nextStory = stories[currentIndex + 1];
+      if (nextStory.media_type === 'image') {
+        const img = new Image();
+        img.src = nextStory.media_url;
+      }
     }
-  }, [currentStory, onStoryViewed]);
+  }, [currentIndex, stories]);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || !mediaLoaded) return;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -114,7 +112,7 @@ export const StoryViewer = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPaused, storyDuration, goToNext]);
+  }, [isPaused, storyDuration, goToNext, mediaLoaded]);
 
   const handleTouchStart = () => setIsPaused(true);
   const handleTouchEnd = () => setIsPaused(false);
@@ -158,22 +156,7 @@ export const StoryViewer = ({
         {/* Header */}
         <div className="absolute top-6 left-2 right-2 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8 border-2 border-white">
-              <AvatarImage src={currentStory.profile?.avatar_url} />
-              <AvatarFallback>
-                {currentStory.profile?.username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-white text-sm font-medium">
-                {currentStory.profile?.username}
-              </p>
-              <p className="text-white/70 text-xs">
-                {formatDistanceToNow(new Date(currentStory.created_at), {
-                  addSuffix: true,
-                })}
-              </p>
-            </div>
+            <p className="text-white text-sm font-medium">{highlightTitle}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -208,18 +191,17 @@ export const StoryViewer = ({
         {/* Story content */}
         <div className="w-full h-full flex items-center justify-center">
           {currentStory.media_type === 'video' ? (
-            <video
-              src={currentStory.media_url}
-              className="max-w-full max-h-full object-contain"
-              autoPlay
-              muted
-              playsInline
+            <OptimizedVideo 
+              src={currentStory.media_url} 
+              isActive={true}
+              onLoadedData={() => setMediaLoaded(true)}
             />
           ) : (
             <img
               src={currentStory.media_url}
-              alt="Story"
+              alt="Highlight"
               className="max-w-full max-h-full object-contain"
+              onLoad={() => setMediaLoaded(true)}
             />
           )}
         </div>
