@@ -1,7 +1,7 @@
-import { MessageCircle, Home, User } from 'lucide-react';
+import { MessageCircle, Home, User, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewType = 'chat' | 'feed' | 'profile';
+type ViewType = 'chat' | 'feed' | 'store' | 'profile';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -12,6 +12,7 @@ export const BottomNav = ({ currentView, onNavigate }: BottomNavProps) => {
   const navItems = [
     { id: 'chat' as ViewType, icon: MessageCircle, label: 'Chat' },
     { id: 'feed' as ViewType, icon: Home, label: 'Feed' },
+    { id: 'store' as ViewType, icon: ShoppingBag, label: 'Store' },
     { id: 'profile' as ViewType, icon: User, label: 'Profile' },
   ];
 

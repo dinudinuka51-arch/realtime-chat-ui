@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { ProfileEditDialog } from '@/components/chat/ProfileEditDialog';
 import { DeleteAccountDialog } from '@/components/chat/DeleteAccountDialog';
+import { ProfileHighlights } from '@/components/stories/ProfileHighlights';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from 'next-themes';
@@ -138,6 +139,16 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Story Highlights */}
+        {user && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-semibold mb-3">Story Highlights</h3>
+              <ProfileHighlights userId={user.id} isOwnProfile={true} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Settings Card */}
         <Card>
