@@ -71,17 +71,22 @@ export const StoryViewer = ({
   onClose,
   onStoryViewed,
 }: StoryViewerProps) => {
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+  const [showHighlightDialog, setShowHighlightDialog] = useState(false);
 
   const currentStory = stories[currentIndex];
-  const storyDuration = currentStory?.media_type === 'video' ? 30000 : 5000;
+  const storyDuration = currentStory?.media_type === 'video' ? 15000 : 5000;
+  const isOwnStory = currentStory?.user_id === user?.id;
 
   const goToNext = useCallback(() => {
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setProgress(0);
+      setMediaLoaded(false);
     } else {
       onClose();
     }
@@ -91,8 +96,20 @@ export const StoryViewer = ({
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setProgress(0);
+      setMediaLoaded(false);
     }
   }, [currentIndex]);
+
+  // Preload next media for faster transitions
+  useEffect(() => {
+    if (currentIndex < stories.length - 1) {
+      const nextStory = stories[currentIndex + 1];
+      if (nextStory.media_type === 'image') {
+        const img = new Image();
+        img.src = nextStory.media_url;
+      }
+    }
+  }, [currentIndex, stories]);
 
   useEffect(() => {
     if (currentStory) {
@@ -101,7 +118,7 @@ export const StoryViewer = ({
   }, [currentStory, onStoryViewed]);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || !mediaLoaded) return;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -114,7 +131,7 @@ export const StoryViewer = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPaused, storyDuration, goToNext]);
+  }, [isPaused, storyDuration, goToNext, mediaLoaded]);
 
   const handleTouchStart = () => setIsPaused(true);
   const handleTouchEnd = () => setIsPaused(false);
@@ -176,6 +193,19 @@ export const StoryViewer = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isOwnStory && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={() => {
+                  setIsPaused(true);
+                  setShowHighlightDialog(true);
+                }}
+              >
+                <Bookmark className="h-5 w-5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -208,18 +238,17 @@ export const StoryViewer = ({
         {/* Story content */}
         <div className="w-full h-full flex items-center justify-center">
           {currentStory.media_type === 'video' ? (
-            <video
-              src={currentStory.media_url}
-              className="max-w-full max-h-full object-contain"
-              autoPlay
-              muted
-              playsInline
+            <OptimizedVideo 
+              src={currentStory.media_url} 
+              isActive={true}
+              onLoadedData={() => setMediaLoaded(true)}
             />
           ) : (
             <img
               src={currentStory.media_url}
               alt="Story"
               className="max-w-full max-h-full object-contain"
+              onLoad={() => setMediaLoaded(true)}
             />
           )}
         </div>
@@ -257,6 +286,22 @@ export const StoryViewer = ({
             </Button>
           )}
         </div>
+
+        {/* Add to Highlight Dialog */}
+        <AddToHighlightDialog
+          open={showHighlightDialog}
+          onOpenChange={(open) => {
+            setShowHighlightDialog(open);
+            if (!open) setIsPaused(false);
+          }}
+          story={currentStory ? {
+            id: currentStory.id,
+            media_url: currentStory.media_url,
+            media_type: currentStory.media_type,
+            caption: currentStory.caption,
+          } : null}
+          onSuccess={() => {}}
+        />
       </motion.div>
     </AnimatePresence>
   );
