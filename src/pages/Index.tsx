@@ -12,8 +12,9 @@ const RomanFeed = lazy(() => import('@/components/feed/RomanFeed').then(m => ({ 
 const AdminPanel = lazy(() => import('@/components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const ProfileView = lazy(() => import('@/components/profile/ProfileView').then(m => ({ default: m.ProfileView })));
 const StoreView = lazy(() => import('@/components/store/StoreView').then(m => ({ default: m.StoreView })));
+const MarketplaceView = lazy(() => import('@/components/marketplace/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 
-type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin';
+type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin' | 'marketplace';
 
 const ViewSkeleton = () => (
   <div className="min-h-screen bg-background p-4 space-y-4">
@@ -106,6 +107,12 @@ const Index = () => {
         return (
           <Suspense fallback={<ViewSkeleton />}>
             <StoreView onBack={() => handleNavigate('chat')} />
+          </Suspense>
+        );
+      case 'marketplace':
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <MarketplaceView onBack={() => handleNavigate('chat')} />
           </Suspense>
         );
       default:
