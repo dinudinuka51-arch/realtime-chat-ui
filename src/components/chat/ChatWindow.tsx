@@ -440,7 +440,7 @@ export const ChatWindow = ({ conversationId, onBack }: ChatWindowProps) => {
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-2 sm:p-4 bg-card border-t border-border">
+      <div className="p-2 sm:p-4 pb-20 sm:pb-4 bg-card border-t border-border">
         <form onSubmit={sendMessage} className="flex items-center gap-1 sm:gap-2">
           <div className="flex flex-col gap-1">
             <VoiceRecorder 
