@@ -67,7 +67,7 @@ export const ChatLayout = ({ onNavigateToFeed, onNavigateToAdmin }: ChatLayoutPr
                 <Shield className="h-5 w-5" />
               </Button>
             )}
-            <UserMenu />
+            <UserMenu onNavigateToAdmin={onNavigateToAdmin} />
           </div>
         </div>
 
