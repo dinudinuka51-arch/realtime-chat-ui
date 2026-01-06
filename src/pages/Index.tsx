@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useRevenuePopup } from '@/hooks/useRevenuePopup';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { ChatLayout } from '@/components/chat/ChatLayout';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -31,6 +32,7 @@ const ViewSkeleton = () => (
 const Index = () => {
   const { user, loading } = useAuth();
   const { permission, requestPermission, isSupported } = useNotifications();
+  useRevenuePopup(); // Auto popup for revenue
   const [showSplash, setShowSplash] = useState(true);
   const [currentView, setCurrentView] = useState<AppView>('chat');
   const [notificationPrompted, setNotificationPrompted] = useState(false);
