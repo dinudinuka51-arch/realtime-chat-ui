@@ -135,16 +135,16 @@ export const UserMenu = ({ onNavigateToAdmin }: UserMenuProps) => {
               </>
             )}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {}}>
+          <DropdownMenuItem onClick={() => {
+            if (isAdmin && onNavigateToAdmin) {
+              onNavigateToAdmin();
+            } else {
+              toast.info('Settings coming soon!');
+            }
+          }}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {isAdmin && onNavigateToAdmin && (
-            <DropdownMenuItem onClick={onNavigateToAdmin}>
-              <Shield className="mr-2 h-4 w-4" />
-              <span>Admin Panel</span>
-            </DropdownMenuItem>
-          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             onClick={() => setShowDeleteDialog(true)} 
