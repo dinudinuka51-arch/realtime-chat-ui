@@ -1,7 +1,8 @@
-import { MessageCircle, Home, User, ShoppingBag, Package } from 'lucide-react';
+import { MessageCircle, Home, User, ShoppingBag, Package, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
-type ViewType = 'chat' | 'feed' | 'store' | 'profile' | 'marketplace';
+type ViewType = 'chat' | 'feed' | 'store' | 'profile' | 'marketplace' | 'admin';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -9,12 +10,15 @@ interface BottomNavProps {
 }
 
 export const BottomNav = ({ currentView, onNavigate }: BottomNavProps) => {
+  const { isAdmin } = useAdminCheck();
+
   const navItems = [
     { id: 'chat' as ViewType, icon: MessageCircle, label: 'Chat' },
     { id: 'feed' as ViewType, icon: Home, label: 'Feed' },
     { id: 'marketplace' as ViewType, icon: Package, label: 'Market' },
     { id: 'store' as ViewType, icon: ShoppingBag, label: 'Store' },
     { id: 'profile' as ViewType, icon: User, label: 'Profile' },
+    ...(isAdmin ? [{ id: 'admin' as ViewType, icon: Shield, label: 'Admin' }] : []),
   ];
 
   return (
