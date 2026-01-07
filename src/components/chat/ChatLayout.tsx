@@ -1,23 +1,20 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { WelcomeScreen } from './WelcomeScreen';
 import { UserMenu } from './UserMenu';
 import { OfflineBanner } from './OfflineBanner';
 import { Button } from '@/components/ui/button';
-import { Newspaper, Shield } from 'lucide-react';
+import { Newspaper } from 'lucide-react';
 import romanLogo from '@/assets/roman-logo.png';
 
 interface ChatLayoutProps {
   onNavigateToFeed?: () => void;
-  onNavigateToAdmin?: () => void;
+  onNavigateToSettings?: () => void;
 }
 
-export const ChatLayout = ({ onNavigateToFeed, onNavigateToAdmin }: ChatLayoutProps) => {
-  const { user } = useAuth();
-  const { isAdmin } = useAdminCheck();
+export const ChatLayout = ({ onNavigateToFeed, onNavigateToSettings }: ChatLayoutProps) => {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
 
@@ -57,17 +54,7 @@ export const ChatLayout = ({ onNavigateToFeed, onNavigateToAdmin }: ChatLayoutPr
                 <Newspaper className="h-5 w-5" />
               </Button>
             )}
-            {isAdmin && onNavigateToAdmin && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onNavigateToAdmin}
-                title="Admin Panel"
-              >
-                <Shield className="h-5 w-5" />
-              </Button>
-            )}
-            <UserMenu onNavigateToAdmin={onNavigateToAdmin} />
+            <UserMenu onNavigateToSettings={onNavigateToSettings} />
           </div>
         </div>
 

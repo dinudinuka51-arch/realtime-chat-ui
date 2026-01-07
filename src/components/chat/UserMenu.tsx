@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/chat';
 import {
@@ -13,19 +12,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings, Moon, Sun, Trash2, Shield } from 'lucide-react';
+import { LogOut, User, Settings, Moon, Sun, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 
 interface UserMenuProps {
-  onNavigateToAdmin?: () => void;
+  onNavigateToSettings?: () => void;
 }
 
-export const UserMenu = ({ onNavigateToAdmin }: UserMenuProps) => {
+export const UserMenu = ({ onNavigateToSettings }: UserMenuProps) => {
   const { user, signOut } = useAuth();
-  const { isAdmin } = useAdminCheck();
   const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
@@ -136,10 +134,8 @@ export const UserMenu = ({ onNavigateToAdmin }: UserMenuProps) => {
             )}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => {
-            if (isAdmin && onNavigateToAdmin) {
-              onNavigateToAdmin();
-            } else {
-              toast.info('Settings coming soon!');
+            if (onNavigateToSettings) {
+              onNavigateToSettings();
             }
           }}>
             <Settings className="mr-2 h-4 w-4" />

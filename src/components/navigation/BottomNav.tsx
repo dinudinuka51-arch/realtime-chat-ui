@@ -2,7 +2,7 @@ import { MessageCircle, Home, User, ShoppingBag, Package, Shield } from 'lucide-
 import { cn } from '@/lib/utils';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 
-type ViewType = 'chat' | 'feed' | 'store' | 'profile' | 'marketplace' | 'admin';
+type ViewType = 'chat' | 'feed' | 'store' | 'profile' | 'marketplace' | 'admin' | 'settings';
 
 interface BottomNavProps {
   currentView: ViewType;
