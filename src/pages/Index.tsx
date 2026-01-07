@@ -14,8 +14,9 @@ const AdminPanel = lazy(() => import('@/components/admin/AdminPanel').then(m => 
 const ProfileView = lazy(() => import('@/components/profile/ProfileView').then(m => ({ default: m.ProfileView })));
 const StoreView = lazy(() => import('@/components/store/StoreView').then(m => ({ default: m.StoreView })));
 const MarketplaceView = lazy(() => import('@/components/marketplace/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
+const SettingsView = lazy(() => import('@/components/settings/SettingsView').then(m => ({ default: m.SettingsView })));
 
-type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin' | 'marketplace';
+type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin' | 'marketplace' | 'settings';
 
 const ViewSkeleton = () => (
   <div className="min-h-screen bg-background p-4 space-y-4">
@@ -96,7 +97,7 @@ const Index = () => {
       case 'admin':
         return (
           <Suspense fallback={<ViewSkeleton />}>
-            <AdminPanel onBack={() => handleNavigate('chat')} />
+            <AdminPanel onBack={() => handleNavigate('settings')} />
           </Suspense>
         );
       case 'profile':
@@ -117,11 +118,20 @@ const Index = () => {
             <MarketplaceView onBack={() => handleNavigate('chat')} />
           </Suspense>
         );
+      case 'settings':
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <SettingsView 
+              onBack={() => handleNavigate('chat')} 
+              onNavigateToAdmin={() => handleNavigate('admin')}
+            />
+          </Suspense>
+        );
       default:
         return (
           <ChatLayout 
             onNavigateToFeed={() => handleNavigate('feed')}
-            onNavigateToAdmin={() => handleNavigate('admin')}
+            onNavigateToSettings={() => handleNavigate('settings')}
           />
         );
     }
