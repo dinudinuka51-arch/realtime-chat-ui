@@ -690,6 +690,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_is_admin: { Args: { checking_user_id: string }; Returns: boolean }
+      check_is_super_admin: {
+        Args: { checking_user_id: string }
+        Returns: boolean
+      }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
