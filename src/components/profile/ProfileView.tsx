@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { ProfileEditDialog } from '@/components/chat/ProfileEditDialog';
 import { DeleteAccountDialog } from '@/components/chat/DeleteAccountDialog';
 import { ProfileHighlights } from '@/components/stories/ProfileHighlights';
+import { MonetizationView } from '@/components/monetization/MonetizationView';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from 'next-themes';
@@ -32,6 +33,7 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
   } | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showMonetization, setShowMonetization] = useState(false);
   const [stats, setStats] = useState({ posts: 0, stories: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -87,6 +89,11 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
       toast.success('Logged out successfully');
     }
   };
+
+  // Show monetization view if active
+  if (showMonetization) {
+    return <MonetizationView onBack={() => setShowMonetization(false)} />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-background pb-16 md:pb-0">
@@ -201,7 +208,7 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
             <Button
               variant="outline"
               className="w-full justify-start bg-gradient-to-r from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20 border-green-500/30"
-              onClick={() => toast.info('Monetization features coming soon!')}
+              onClick={() => setShowMonetization(true)}
             >
               <DollarSign className="h-5 w-5 mr-3 text-green-500" />
               <span className="text-green-600 dark:text-green-400 font-medium">Monetize</span>

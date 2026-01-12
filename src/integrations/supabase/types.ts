@@ -339,6 +339,45 @@ export type Database = {
           },
         ]
       }
+      monetization_applications: {
+        Row: {
+          applied_at: string
+          approved_at: string | null
+          earnings_pending: number | null
+          earnings_total: number | null
+          id: string
+          payout_details: Json | null
+          payout_method: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          approved_at?: string | null
+          earnings_pending?: number | null
+          earnings_total?: number | null
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          approved_at?: string | null
+          earnings_pending?: number | null
+          earnings_total?: number | null
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           id: string
