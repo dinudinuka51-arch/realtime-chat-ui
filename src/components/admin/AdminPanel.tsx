@@ -54,6 +54,16 @@ interface AdminRole {
   created_at: string;
 }
 
+interface MonetizationApplication {
+  id: string;
+  user_id: string;
+  status: string;
+  applied_at: string;
+  approved_at: string | null;
+  earnings_total: number | null;
+  earnings_pending: number | null;
+}
+
 export const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const { user } = useAuth();
   const { isAdmin, isSuperAdmin, loading: adminLoading } = useAdminCheck();
@@ -62,6 +72,7 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [listings, setListings] = useState<ListingData[]>([]);
   const [admins, setAdmins] = useState<AdminRole[]>([]);
+  const [monetizationApps, setMonetizationApps] = useState<MonetizationApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({
@@ -71,6 +82,7 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
     pendingListings: 0,
     totalRevenue: 0,
     totalAdmins: 0,
+    pendingMonetization: 0,
   });
   const [platformFee, setPlatformFee] = useState(10);
 
@@ -103,6 +115,11 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         .select('*')
         .order('created_at', { ascending: false });
 
+      const { data: monetizationData } = await supabase
+        .from('monetization_applications')
+        .select('*')
+        .order('applied_at', { ascending: false });
+
       const { data: feeData } = await supabase
         .from('platform_settings')
         .select('setting_value')
@@ -117,8 +134,10 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
       setPosts(postsData || []);
       setListings(listingsData || []);
       setAdmins(adminsData || []);
+      setMonetizationApps(monetizationData || []);
 
       const pendingCount = listingsData?.filter(l => l.status === 'pending').length || 0;
+      const pendingMonetizationCount = monetizationData?.filter(m => m.status === 'pending').length || 0;
 
       setStats({
         totalUsers: usersData?.length || 0,
@@ -127,6 +146,7 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         pendingListings: pendingCount,
         totalRevenue: 0,
         totalAdmins: adminsData?.length || 0,
+        pendingMonetization: pendingMonetizationCount,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -198,6 +218,27 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
     } catch (error) {
       console.error('Error updating fee:', error);
       toast.error('Failed to update fee');
+    }
+  };
+
+  const handleMonetizationStatus = async (appId: string, status: 'approved' | 'rejected') => {
+    try {
+      const updateData: { status: string; approved_at?: string } = { status };
+      if (status === 'approved') {
+        updateData.approved_at = new Date().toISOString();
+      }
+      
+      const { error } = await supabase
+        .from('monetization_applications')
+        .update(updateData)
+        .eq('id', appId);
+      
+      if (error) throw error;
+      toast.success(`Monetization application ${status}`);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating monetization status:', error);
+      toast.error('Failed to update application');
     }
   };
 
@@ -304,6 +345,12 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
       <Tabs defaultValue="listings" className="p-4">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="listings">Listings</TabsTrigger>
+          <TabsTrigger value="monetization" className="flex items-center gap-1">
+            Monetization
+            {stats.pendingMonetization > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">{stats.pendingMonetization}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="admins">Admins</TabsTrigger>
@@ -353,6 +400,85 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="monetization" className="space-y-4">
+          <h3 className="text-lg font-semibold">Pending Monetization Applications</h3>
+          {monetizationApps.filter(app => app.status === 'pending').length === 0 ? (
+            <p className="text-muted-foreground">No pending applications</p>
+          ) : (
+            <div className="space-y-2">
+              {monetizationApps.filter(app => app.status === 'pending').map((app) => {
+                const appUser = users.find(u => u.user_id === app.user_id);
+                return (
+                  <Card key={app.id}>
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={appUser?.avatar_url || ''} />
+                          <AvatarFallback>{appUser?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{appUser?.username || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            UID: {app.user_id.slice(0, 8)}... • Applied: {new Date(app.applied_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => handleMonetizationStatus(app.id, 'approved')}>
+                          <Check className="w-4 h-4 mr-1" /> Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleMonetizationStatus(app.id, 'rejected')}>
+                          <X className="w-4 h-4 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <h3 className="text-lg font-semibold mt-6">All Applications</h3>
+          <div className="space-y-2">
+            {monetizationApps.map((app) => {
+              const appUser = users.find(u => u.user_id === app.user_id);
+              return (
+                <Card key={app.id}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={appUser?.avatar_url || ''} />
+                        <AvatarFallback>{appUser?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{appUser?.username || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          UID: {app.user_id.slice(0, 8)}... • {app.approved_at ? `Approved: ${new Date(app.approved_at).toLocaleDateString()}` : `Applied: ${new Date(app.applied_at).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={app.status === 'approved' ? 'default' : app.status === 'pending' ? 'secondary' : 'destructive'}>
+                        {app.status}
+                      </Badge>
+                      {app.status !== 'approved' && app.status !== 'rejected' && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-green-600" onClick={() => handleMonetizationStatus(app.id, 'approved')}>
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => handleMonetizationStatus(app.id, 'rejected')}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
