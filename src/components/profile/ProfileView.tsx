@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff, DollarSign } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -194,6 +194,18 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
                 onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
               />
             </div>
+
+            <Separator />
+
+            {/* Monetize Button */}
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gradient-to-r from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20 border-green-500/30"
+              onClick={() => toast.info('Monetization features coming soon!')}
+            >
+              <DollarSign className="h-5 w-5 mr-3 text-green-500" />
+              <span className="text-green-600 dark:text-green-400 font-medium">Monetize</span>
+            </Button>
 
             <Separator />
 
