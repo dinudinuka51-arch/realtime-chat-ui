@@ -3,12 +3,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, ArrowLeft, Package } from 'lucide-react';
+import { Search, Filter, ArrowLeft, Package, Clock, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ListingCard } from './ListingCard';
 import { CreateListingDialog } from './CreateListingDialog';
+import { ApproveListingDialog } from './ApproveListingDialog';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface MarketplaceViewProps {
   onBack: () => void;
@@ -43,12 +45,16 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
+  const [pendingListings, setPendingListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
   useEffect(() => {
     fetchListings();
+    fetchPendingListings();
     if (user) fetchMyListings();
 
     const channel = supabase
@@ -58,6 +64,7 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
         { event: '*', schema: 'public', table: 'marketplace_listings' },
         () => {
           fetchListings();
+          fetchPendingListings();
           if (user) fetchMyListings();
         }
       )
@@ -111,6 +118,31 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
     } catch (error) {
       console.error('Error fetching my listings:', error);
     }
+  };
+
+  const fetchPendingListings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('marketplace_listings')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingListings(data || []);
+    } catch (error) {
+      console.error('Error fetching pending listings:', error);
+    }
+  };
+
+  const handleApproveClick = (listing: Listing) => {
+    setSelectedListing(listing);
+    setApproveDialogOpen(true);
+  };
+
+  const handleApproved = () => {
+    fetchListings();
+    fetchPendingListings();
   };
 
   useEffect(() => {
@@ -173,6 +205,15 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
       <Tabs defaultValue="browse" className="w-full">
         <TabsList className="w-full justify-start px-4 bg-transparent border-b rounded-none">
           <TabsTrigger value="browse">Browse</TabsTrigger>
+          <TabsTrigger value="pending" className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            Pending
+            {pendingListings.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {pendingListings.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           {user && <TabsTrigger value="my-listings">My Listings</TabsTrigger>}
         </TabsList>
 
@@ -203,6 +244,32 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
           )}
         </TabsContent>
 
+        <TabsContent value="pending" className="p-4">
+          {pendingListings.length === 0 ? (
+            <div className="text-center py-12">
+              <CheckCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No pending listings</h3>
+              <p className="text-muted-foreground">All listings have been reviewed!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {pendingListings.map((listing) => (
+                <div key={listing.id} className="relative">
+                  <ListingCard listing={listing} showStatus />
+                  <Button
+                    size="sm"
+                    className="absolute bottom-4 left-4 right-4"
+                    onClick={() => handleApproveClick(listing)}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Approve
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="my-listings" className="p-4">
           {myListings.length === 0 ? (
             <div className="text-center py-12">
@@ -223,6 +290,17 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Approve Dialog */}
+      {selectedListing && (
+        <ApproveListingDialog
+          open={approveDialogOpen}
+          onOpenChange={setApproveDialogOpen}
+          listingId={selectedListing.id}
+          listingTitle={selectedListing.title}
+          onApproved={handleApproved}
+        />
+      )}
     </div>
   );
 };
