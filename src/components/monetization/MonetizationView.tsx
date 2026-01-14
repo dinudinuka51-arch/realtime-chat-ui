@@ -117,6 +117,14 @@ export const MonetizationView = ({ onBack }: MonetizationViewProps) => {
       return;
     }
 
+    // Check if session is valid before attempting
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      toast.error('Session expired. Please login again.');
+      await supabase.auth.signOut();
+      return;
+    }
+
     setApplying(true);
     try {
       const { error } = await supabase
@@ -129,6 +137,9 @@ export const MonetizationView = ({ onBack }: MonetizationViewProps) => {
       if (error) {
         if (error.code === '23505') {
           toast.error('You have already applied for monetization');
+        } else if (error.message?.includes('JWT') || error.message?.includes('token')) {
+          toast.error('Session expired. Please login again.');
+          await supabase.auth.signOut();
         } else {
           throw error;
         }
@@ -136,9 +147,14 @@ export const MonetizationView = ({ onBack }: MonetizationViewProps) => {
         toast.success('Monetization application submitted!');
         fetchApplications();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error applying:', error);
-      toast.error('Failed to submit application');
+      if (error?.message?.includes('JWT') || error?.message?.includes('token') || error?.code === 'PGRST301') {
+        toast.error('Session expired. Please login again.');
+        await supabase.auth.signOut();
+      } else {
+        toast.error('Failed to submit application');
+      }
     } finally {
       setApplying(false);
     }
