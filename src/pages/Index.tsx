@@ -37,6 +37,7 @@ const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [currentView, setCurrentView] = useState<AppView>('chat');
   const [notificationPrompted, setNotificationPrompted] = useState(false);
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
 
   // Check if splash was already shown this session
   useEffect(() => {
@@ -115,7 +116,13 @@ const Index = () => {
       case 'marketplace':
         return (
           <Suspense fallback={<ViewSkeleton />}>
-            <MarketplaceView onBack={() => handleNavigate('chat')} />
+            <MarketplaceView 
+              onBack={() => handleNavigate('chat')} 
+              onOpenChat={(conversationId) => {
+                setPendingConversationId(conversationId);
+                handleNavigate('chat');
+              }}
+            />
           </Suspense>
         );
       case 'settings':
@@ -132,6 +139,8 @@ const Index = () => {
           <ChatLayout 
             onNavigateToFeed={() => handleNavigate('feed')}
             onNavigateToSettings={() => handleNavigate('settings')}
+            initialConversationId={pendingConversationId}
+            onConversationOpened={() => setPendingConversationId(null)}
           />
         );
     }

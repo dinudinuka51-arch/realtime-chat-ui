@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface MarketplaceViewProps {
   onBack: () => void;
+  onOpenChat?: (conversationId: string) => void;
 }
 
 interface Listing {
@@ -41,7 +42,7 @@ const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
+export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) => {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
@@ -149,8 +150,62 @@ export const MarketplaceView = ({ onBack }: MarketplaceViewProps) => {
     fetchListings();
   }, [searchQuery, category]);
 
-  const handleContact = (listing: Listing) => {
-    toast.info(`Contact seller for: ${listing.title}`);
+  const handleContact = async (listing: Listing) => {
+    if (!user) {
+      toast.error('Please login to contact seller');
+      return;
+    }
+
+    if (listing.user_id === user.id) {
+      toast.info('This is your own listing');
+      return;
+    }
+
+    try {
+      // Check if conversation already exists
+      const { data: myConvs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id);
+
+      const myConvIds = myConvs?.map((c) => c.conversation_id) ?? [];
+
+      if (myConvIds.length > 0) {
+        const { data: matches } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .in('conversation_id', myConvIds)
+          .eq('user_id', listing.user_id)
+          .limit(1);
+
+        if (matches?.[0]?.conversation_id) {
+          onOpenChat?.(matches[0].conversation_id);
+          onBack();
+          return;
+        }
+      }
+
+      // Create new conversation
+      const conversationId = crypto.randomUUID();
+
+      await supabase
+        .from('conversations')
+        .insert({ id: conversationId });
+
+      await supabase
+        .from('conversation_participants')
+        .insert([
+          { conversation_id: conversationId, user_id: user.id },
+          { conversation_id: conversationId, user_id: listing.user_id },
+        ]);
+
+      toast.success('Chat started with seller!');
+      onOpenChat?.(conversationId);
+      onBack();
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast.error('Failed to start chat');
+    }
   };
 
   const handleBuy = (listing: Listing) => {
