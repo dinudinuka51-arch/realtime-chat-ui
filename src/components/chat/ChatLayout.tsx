@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
@@ -12,11 +12,27 @@ import romanLogo from '@/assets/roman-logo.png';
 interface ChatLayoutProps {
   onNavigateToFeed?: () => void;
   onNavigateToSettings?: () => void;
+  initialConversationId?: string | null;
+  onConversationOpened?: () => void;
 }
 
-export const ChatLayout = ({ onNavigateToFeed, onNavigateToSettings }: ChatLayoutProps) => {
+export const ChatLayout = ({ 
+  onNavigateToFeed, 
+  onNavigateToSettings,
+  initialConversationId,
+  onConversationOpened 
+}: ChatLayoutProps) => {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
+
+  // Handle initial conversation from marketplace contact
+  useEffect(() => {
+    if (initialConversationId) {
+      setSelectedConversation(initialConversationId);
+      setShowMobileChat(true);
+      onConversationOpened?.();
+    }
+  }, [initialConversationId, onConversationOpened]);
 
   const handleSelectConversation = (id: string) => {
     setSelectedConversation(id);
