@@ -165,14 +165,83 @@ export type Database = {
           },
         ]
       }
+      listing_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_favorites_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          listing_id: string
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id: string
+          reason: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_reports_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_listings: {
         Row: {
           category: string
           created_at: string
           description: string | null
+          expires_at: string | null
           id: string
           images: string[] | null
           is_featured: boolean | null
+          location: string | null
           price: number
           status: string
           title: string
@@ -184,9 +253,11 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          expires_at?: string | null
           id?: string
           images?: string[] | null
           is_featured?: boolean | null
+          location?: string | null
           price: number
           status?: string
           title: string
@@ -198,9 +269,11 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          expires_at?: string | null
           id?: string
           images?: string[] | null
           is_featured?: boolean | null
+          location?: string | null
           price?: number
           status?: string
           title?: string
@@ -546,6 +619,44 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      seller_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string | null
+          rater_id: string
+          rating: number
+          review: string | null
+          seller_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          rater_id: string
+          rating: number
+          review?: string | null
+          seller_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          rater_id?: string
+          rating?: number
+          review?: string | null
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_ratings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stories: {
         Row: {

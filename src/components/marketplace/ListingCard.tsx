@@ -1,8 +1,12 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, MessageCircle, ShoppingCart } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Eye, MessageCircle, ShoppingCart, Heart, MapPin, Clock } from 'lucide-react';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
+import { SellerRating } from './SellerRating';
+import { RatingDialog } from './RatingDialog';
+import { ReportListingDialog } from './ReportListingDialog';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ListingCardProps {
   listing: {
@@ -17,6 +21,8 @@ interface ListingCardProps {
     views_count: number;
     created_at: string;
     user_id: string;
+    location?: string | null;
+    expires_at?: string | null;
     profile?: {
       username: string;
       avatar_url: string | null;
@@ -25,6 +31,8 @@ interface ListingCardProps {
   onContact?: () => void;
   onBuy?: () => void;
   showStatus?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -37,11 +45,28 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCardProps) => {
+export const ListingCard = ({ 
+  listing, 
+  onContact, 
+  onBuy, 
+  showStatus,
+  isFavorite,
+  onToggleFavorite 
+}: ListingCardProps) => {
+  const { user } = useAuth();
   const mainImage = listing.images?.[0] || '/placeholder.svg';
+  const imageCount = listing.images?.length || 0;
+
+  // Calculate days until expiry
+  const daysUntilExpiry = listing.expires_at 
+    ? differenceInDays(new Date(listing.expires_at), new Date()) 
+    : null;
+
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+  const isOwner = user?.id === listing.user_id;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
       <div className="relative aspect-square">
         <img
           src={mainImage}
@@ -49,9 +74,18 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
           className="w-full h-full object-cover"
           loading="lazy"
         />
+        
+        {/* Image count badge */}
+        {imageCount > 1 && (
+          <Badge className="absolute bottom-2 left-2 bg-black/60 text-white text-xs">
+            1/{imageCount}
+          </Badge>
+        )}
+        
         {listing.is_featured && (
           <Badge className="absolute top-2 left-2 bg-yellow-500">Featured</Badge>
         )}
+        
         {showStatus && (
           <Badge 
             className="absolute top-2 right-2"
@@ -59,6 +93,30 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
           >
             {listing.status}
           </Badge>
+        )}
+
+        {/* Expiry warning */}
+        {isExpiringSoon && !showStatus && (
+          <Badge className="absolute top-2 right-2 bg-orange-500 text-white">
+            <Clock className="w-3 h-3 mr-1" />
+            {daysUntilExpiry}d left
+          </Badge>
+        )}
+
+        {/* Favorite button */}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            className="absolute top-2 right-2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+            style={{ display: showStatus ? 'none' : 'block' }}
+          >
+            <Heart 
+              className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+            />
+          </button>
         )}
       </div>
       
@@ -75,8 +133,16 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
             {listing.description}
           </p>
         )}
+
+        {/* Location */}
+        {listing.location && (
+          <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground">
+            <MapPin className="w-3 h-3" />
+            <span className="line-clamp-1">{listing.location}</span>
+          </div>
+        )}
         
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {CATEGORY_LABELS[listing.category] || listing.category}
           </Badge>
@@ -84,6 +150,7 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
             <Eye className="w-3 h-3" />
             {listing.views_count}
           </span>
+          <SellerRating sellerId={listing.user_id} />
         </div>
         
         <p className="text-xs text-muted-foreground mt-2">
@@ -91,7 +158,7 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
         </p>
       </CardContent>
       
-      <CardFooter className="p-4 pt-0 gap-2">
+      <CardFooter className="p-4 pt-0 gap-2 flex-wrap">
         {onContact && (
           <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={onContact}>
             <MessageCircle className="w-4 h-4" />
@@ -103,6 +170,20 @@ export const ListingCard = ({ listing, onContact, onBuy, showStatus }: ListingCa
             <ShoppingCart className="w-4 h-4" />
             Buy Now
           </Button>
+        )}
+        
+        {/* Rating and Report - only for non-owners */}
+        {!isOwner && listing.status === 'approved' && (
+          <div className="flex gap-1 w-full mt-2">
+            <RatingDialog 
+              sellerId={listing.user_id} 
+              listingId={listing.id}
+            />
+            <ReportListingDialog 
+              listingId={listing.id} 
+              listingTitle={listing.title}
+            />
+          </div>
         )}
       </CardFooter>
     </Card>
