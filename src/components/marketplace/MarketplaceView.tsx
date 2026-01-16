@@ -3,14 +3,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, ArrowLeft, Package, Clock, CheckCircle } from 'lucide-react';
+import { Search, Filter, ArrowLeft, Package, Clock, CheckCircle, XCircle, Heart, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ListingCard } from './ListingCard';
 import { CreateListingDialog } from './CreateListingDialog';
 import { ApproveListingDialog } from './ApproveListingDialog';
+import { RejectListingDialog } from './RejectListingDialog';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { useFavorites } from '@/hooks/useFavorites';
 
 interface MarketplaceViewProps {
   onBack: () => void;
@@ -29,6 +31,8 @@ interface Listing {
   views_count: number;
   created_at: string;
   user_id: string;
+  location?: string | null;
+  expires_at?: string | null;
 }
 
 const CATEGORIES = [
@@ -42,21 +46,39 @@ const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
+const LOCATIONS = [
+  { value: 'all', label: 'All Locations' },
+  { value: 'colombo', label: 'Colombo' },
+  { value: 'kandy', label: 'Kandy' },
+  { value: 'galle', label: 'Galle' },
+  { value: 'jaffna', label: 'Jaffna' },
+  { value: 'negombo', label: 'Negombo' },
+  { value: 'anuradhapura', label: 'Anuradhapura' },
+  { value: 'other', label: 'Other' },
+];
+
 export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) => {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [pendingListings, setPendingListings] = useState<Listing[]>([]);
+  const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [location, setLocation] = useState('all');
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
+  const { favorites, toggleFavorite, isFavorite, fetchFavorites } = useFavorites();
 
   useEffect(() => {
     fetchListings();
     fetchPendingListings();
-    if (user) fetchMyListings();
+    if (user) {
+      fetchMyListings();
+    }
 
     const channel = supabase
       .channel('marketplace_changes')
@@ -76,6 +98,15 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
     };
   }, [user]);
 
+  // Fetch favorite listings when favorites change
+  useEffect(() => {
+    if (favorites.length > 0) {
+      fetchFavoriteListings();
+    } else {
+      setFavoriteListings([]);
+    }
+  }, [favorites]);
+
   const fetchListings = async () => {
     try {
       let query = supabase
@@ -87,6 +118,10 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
 
       if (category !== 'all') {
         query = query.eq('category', category);
+      }
+
+      if (location !== 'all') {
+        query = query.ilike('location', `%${location}%`);
       }
 
       if (searchQuery) {
@@ -136,9 +171,31 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
     }
   };
 
+  const fetchFavoriteListings = async () => {
+    if (favorites.length === 0) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('marketplace_listings')
+        .select('*')
+        .in('id', favorites)
+        .eq('status', 'approved');
+
+      if (error) throw error;
+      setFavoriteListings(data || []);
+    } catch (error) {
+      console.error('Error fetching favorite listings:', error);
+    }
+  };
+
   const handleApproveClick = (listing: Listing) => {
     setSelectedListing(listing);
     setApproveDialogOpen(true);
+  };
+
+  const handleRejectClick = (listing: Listing) => {
+    setSelectedListing(listing);
+    setRejectDialogOpen(true);
   };
 
   const handleApproved = () => {
@@ -146,9 +203,13 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
     fetchPendingListings();
   };
 
+  const handleRejected = () => {
+    fetchPendingListings();
+  };
+
   useEffect(() => {
     fetchListings();
-  }, [searchQuery, category]);
+  }, [searchQuery, category, location]);
 
   const handleContact = async (listing: Listing) => {
     if (!user) {
@@ -162,7 +223,6 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
     }
 
     try {
-      // Check if conversation already exists
       const { data: myConvs } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
@@ -185,7 +245,6 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
         }
       }
 
-      // Create new conversation
       const conversationId = crypto.randomUUID();
 
       await supabase
@@ -229,8 +288,8 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
           {user && <CreateListingDialog onListingCreated={fetchMyListings} />}
         </div>
 
-        {/* Search & Filter */}
-        <div className="px-4 pb-4 flex gap-2">
+        {/* Search & Filters */}
+        <div className="px-4 pb-4 space-y-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -240,25 +299,40 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
               className="pl-10"
             />
           </div>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="flex-1">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={location} onValueChange={setLocation}>
+              <SelectTrigger className="flex-1">
+                <MapPin className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LOCATIONS.map((loc) => (
+                  <SelectItem key={loc.value} value={loc.value}>
+                    {loc.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="w-full justify-start px-4 bg-transparent border-b rounded-none">
+        <TabsList className="w-full justify-start px-4 bg-transparent border-b rounded-none overflow-x-auto">
           <TabsTrigger value="browse">Browse</TabsTrigger>
           <TabsTrigger value="pending" className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
@@ -269,6 +343,17 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
               </Badge>
             )}
           </TabsTrigger>
+          {user && (
+            <TabsTrigger value="favorites" className="flex items-center gap-1">
+              <Heart className="w-4 h-4" />
+              Favorites
+              {favorites.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {favorites.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
           {user && <TabsTrigger value="my-listings">My Listings</TabsTrigger>}
         </TabsList>
 
@@ -293,6 +378,8 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
                   listing={listing}
                   onContact={() => handleContact(listing)}
                   onBuy={() => handleBuy(listing)}
+                  isFavorite={isFavorite(listing.id)}
+                  onToggleFavorite={() => toggleFavorite(listing.id)}
                 />
               ))}
             </div>
@@ -311,15 +398,49 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
               {pendingListings.map((listing) => (
                 <div key={listing.id} className="relative">
                   <ListingCard listing={listing} showStatus />
-                  <Button
-                    size="sm"
-                    className="absolute bottom-4 left-4 right-4"
-                    onClick={() => handleApproveClick(listing)}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
+                  <div className="absolute bottom-4 left-4 right-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleApproveClick(listing)}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleRejectClick(listing)}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="favorites" className="p-4">
+          {favoriteListings.length === 0 ? (
+            <div className="text-center py-12">
+              <Heart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No favorites yet</h3>
+              <p className="text-muted-foreground">Save listings you like to see them here!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {favoriteListings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onContact={() => handleContact(listing)}
+                  onBuy={() => handleBuy(listing)}
+                  isFavorite={true}
+                  onToggleFavorite={() => toggleFavorite(listing.id)}
+                />
               ))}
             </div>
           )}
@@ -354,6 +475,17 @@ export const MarketplaceView = ({ onBack, onOpenChat }: MarketplaceViewProps) =>
           listingId={selectedListing.id}
           listingTitle={selectedListing.title}
           onApproved={handleApproved}
+        />
+      )}
+
+      {/* Reject Dialog */}
+      {selectedListing && (
+        <RejectListingDialog
+          open={rejectDialogOpen}
+          onOpenChange={setRejectDialogOpen}
+          listingId={selectedListing.id}
+          listingTitle={selectedListing.title}
+          onRejected={handleRejected}
         />
       )}
     </div>
