@@ -8,8 +8,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   ArrowLeft, Users, MessageSquare, FileText, Shield, 
   Trash2, RefreshCw, Search, DollarSign, Package,
-  Check, X, TrendingUp, Settings
+  Check, X, TrendingUp, Settings, Flag, Star, Eye
 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
@@ -64,6 +72,27 @@ interface MonetizationApplication {
   earnings_pending: number | null;
 }
 
+interface ReportData {
+  id: string;
+  listing_id: string;
+  reporter_id: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  listing?: { title: string } | null;
+}
+
+interface RatingData {
+  id: string;
+  seller_id: string;
+  rater_id: string;
+  listing_id: string | null;
+  rating: number;
+  review: string | null;
+  created_at: string;
+}
+
 export const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const { user } = useAuth();
   const { isAdmin, isSuperAdmin, loading: adminLoading } = useAdminCheck();
@@ -73,6 +102,8 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [listings, setListings] = useState<ListingData[]>([]);
   const [admins, setAdmins] = useState<AdminRole[]>([]);
   const [monetizationApps, setMonetizationApps] = useState<MonetizationApplication[]>([]);
+  const [reports, setReports] = useState<ReportData[]>([]);
+  const [ratings, setRatings] = useState<RatingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({
@@ -83,6 +114,8 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
     totalRevenue: 0,
     totalAdmins: 0,
     pendingMonetization: 0,
+    pendingReports: 0,
+    totalRatings: 0,
   });
   const [platformFee, setPlatformFee] = useState(10);
 
@@ -120,6 +153,16 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         .select('*')
         .order('applied_at', { ascending: false });
 
+      const { data: reportsData } = await supabase
+        .from('listing_reports')
+        .select('*, listing:marketplace_listings(title)')
+        .order('created_at', { ascending: false });
+
+      const { data: ratingsData } = await supabase
+        .from('seller_ratings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
       const { data: feeData } = await supabase
         .from('platform_settings')
         .select('setting_value')
@@ -135,9 +178,12 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
       setListings(listingsData || []);
       setAdmins(adminsData || []);
       setMonetizationApps(monetizationData || []);
+      setReports(reportsData || []);
+      setRatings(ratingsData || []);
 
       const pendingCount = listingsData?.filter(l => l.status === 'pending').length || 0;
       const pendingMonetizationCount = monetizationData?.filter(m => m.status === 'pending').length || 0;
+      const pendingReportsCount = reportsData?.filter(r => r.status === 'pending').length || 0;
 
       setStats({
         totalUsers: usersData?.length || 0,
@@ -147,6 +193,8 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         totalRevenue: 0,
         totalAdmins: adminsData?.length || 0,
         pendingMonetization: pendingMonetizationCount,
+        pendingReports: pendingReportsCount,
+        totalRatings: ratingsData?.length || 0,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -239,6 +287,54 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
     } catch (error) {
       console.error('Error updating monetization status:', error);
       toast.error('Failed to update application');
+    }
+  };
+
+  const handleReportStatus = async (reportId: string, status: 'reviewed' | 'dismissed') => {
+    try {
+      const { error } = await supabase
+        .from('listing_reports')
+        .update({ status })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      toast.success(`Report ${status}`);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating report:', error);
+      toast.error('Failed to update report');
+    }
+  };
+
+  const handleDeleteRating = async (ratingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('seller_ratings')
+        .delete()
+        .eq('id', ratingId);
+      
+      if (error) throw error;
+      toast.success('Rating deleted');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      toast.error('Failed to delete rating');
+    }
+  };
+
+  const handleDeleteListing = async (listingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('marketplace_listings')
+        .delete()
+        .eq('id', listingId);
+      
+      if (error) throw error;
+      toast.success('Listing deleted');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      toast.error('Failed to delete listing');
     }
   };
 
@@ -343,8 +439,19 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
       </div>
 
       <Tabs defaultValue="listings" className="p-4">
-        <TabsList className="w-full justify-start overflow-x-auto">
+        <TabsList className="w-full justify-start overflow-x-auto flex-wrap">
           <TabsTrigger value="listings">Listings</TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center gap-1">
+            <Flag className="w-4 h-4" />
+            Reports
+            {stats.pendingReports > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">{stats.pendingReports}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="ratings" className="flex items-center gap-1">
+            <Star className="w-4 h-4" />
+            Ratings ({stats.totalRatings})
+          </TabsTrigger>
           <TabsTrigger value="monetization" className="flex items-center gap-1">
             Monetization
             {stats.pendingMonetization > 0 && (
@@ -384,22 +491,214 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
             </div>
           )}
           <h3 className="text-lg font-semibold mt-6">All Listings</h3>
-          <div className="space-y-2">
-            {listings.map((listing) => (
-              <Card key={listing.id}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{listing.title}</h4>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {listings.map((listing) => (
+                  <TableRow key={listing.id}>
+                    <TableCell className="font-medium">{listing.title}</TableCell>
+                    <TableCell>${listing.price}</TableCell>
+                    <TableCell>{listing.category}</TableCell>
+                    <TableCell>
                       <Badge variant={listing.status === 'approved' ? 'default' : listing.status === 'pending' ? 'secondary' : 'destructive'}>
                         {listing.status}
                       </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">${listing.price} • {listing.category}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {listing.status === 'pending' && (
+                          <>
+                            <Button size="sm" variant="ghost" className="text-green-600 h-8 w-8 p-0" onClick={() => handleListingStatus(listing.id, 'approved')}>
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-red-600 h-8 w-8 p-0" onClick={() => handleListingStatus(listing.id, 'rejected')}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0" onClick={() => handleDeleteListing(listing.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports" className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Flag className="w-5 h-5 text-orange-500" />
+            Pending Reports
+          </h3>
+          {reports.filter(r => r.status === 'pending').length === 0 ? (
+            <p className="text-muted-foreground">No pending reports</p>
+          ) : (
+            <div className="space-y-2">
+              {reports.filter(r => r.status === 'pending').map((report) => {
+                const reporter = users.find(u => u.user_id === report.reporter_id);
+                return (
+                  <Card key={report.id} className="border-orange-200 dark:border-orange-800">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-orange-600 border-orange-600">{report.reason}</Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(report.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="font-medium">Listing: {report.listing?.title || 'Unknown'}</p>
+                          {report.description && (
+                            <p className="text-sm text-muted-foreground">{report.description}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Reported by: @{reporter?.username || 'Unknown'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-green-600" onClick={() => handleReportStatus(report.id, 'reviewed')}>
+                            <Eye className="w-4 h-4 mr-1" /> Review
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-muted-foreground" onClick={() => handleReportStatus(report.id, 'dismissed')}>
+                            <X className="w-4 h-4 mr-1" /> Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <h3 className="text-lg font-semibold mt-6">All Reports</h3>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Listing</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Reporter</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reports.map((report) => {
+                  const reporter = users.find(u => u.user_id === report.reporter_id);
+                  return (
+                    <TableRow key={report.id}>
+                      <TableCell className="font-medium">{report.listing?.title || 'Unknown'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{report.reason}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">{report.description || '-'}</TableCell>
+                      <TableCell>@{reporter?.username || 'Unknown'}</TableCell>
+                      <TableCell>
+                        <Badge variant={report.status === 'pending' ? 'secondary' : report.status === 'reviewed' ? 'default' : 'outline'}>
+                          {report.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">{new Date(report.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {report.status === 'pending' && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-600" onClick={() => handleReportStatus(report.id, 'reviewed')}>
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleReportStatus(report.id, 'dismissed')}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Ratings Tab */}
+        <TabsContent value="ratings" className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            All Ratings & Reviews ({ratings.length})
+          </h3>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Seller</TableHead>
+                  <TableHead>Rater</TableHead>
+                  <TableHead>Rating</TableHead>
+                  <TableHead>Review</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ratings.map((rating) => {
+                  const seller = users.find(u => u.user_id === rating.seller_id);
+                  const rater = users.find(u => u.user_id === rating.rater_id);
+                  return (
+                    <TableRow key={rating.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={seller?.avatar_url || ''} />
+                            <AvatarFallback className="text-xs">{seller?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span>@{seller?.username || 'Unknown'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={rater?.avatar_url || ''} />
+                            <AvatarFallback className="text-xs">{rater?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span>@{rater?.username || 'Unknown'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              className={`w-4 h-4 ${i < rating.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} 
+                            />
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">{rating.review || '-'}</TableCell>
+                      <TableCell className="text-xs">{new Date(rating.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0" onClick={() => handleDeleteRating(rating.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
 
