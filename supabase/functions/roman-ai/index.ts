@@ -33,15 +33,51 @@ Always be respectful and maintain a positive, supportive tone.`
       { role: "user", content: message }
     ];
 
-    // Call the AI API (OpenAI-compatible endpoint)
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
+    // Detect API type based on key prefix
+    const isOpenRouter = ROMAN_AI_API_KEY.startsWith("sk-or-") || ROMAN_AI_API_KEY.includes("openrouter");
+    const isOpenAI = ROMAN_AI_API_KEY.startsWith("sk-") && !isOpenRouter;
+    
+    let apiUrl: string;
+    let model: string;
+    let headers: Record<string, string>;
+
+    if (isOpenRouter || ROMAN_AI_API_KEY.startsWith("ofapi_")) {
+      // OpenRouter API
+      apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+      model = "google/gemini-2.0-flash-exp:free";
+      headers = {
         "Authorization": `Bearer ${ROMAN_AI_API_KEY}`,
         "Content-Type": "application/json",
-      },
+        "HTTP-Referer": "https://roman-messenger.lovable.app",
+        "X-Title": "Roman AI Assistant",
+      };
+    } else if (isOpenAI) {
+      // OpenAI API
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      model = "gpt-4o-mini";
+      headers = {
+        "Authorization": `Bearer ${ROMAN_AI_API_KEY}`,
+        "Content-Type": "application/json",
+      };
+    } else {
+      // Default to OpenRouter for other keys
+      apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+      model = "google/gemini-2.0-flash-exp:free";
+      headers = {
+        "Authorization": `Bearer ${ROMAN_AI_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://roman-messenger.lovable.app",
+        "X-Title": "Roman AI Assistant",
+      };
+    }
+
+    console.log(`Using API: ${apiUrl}, Model: ${model}`);
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers,
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages,
         max_tokens: 1000,
         temperature: 0.7,
@@ -59,7 +95,7 @@ Always be respectful and maintain a positive, supportive tone.`
         );
       }
       
-      throw new Error(`AI API error: ${response.status}`);
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
