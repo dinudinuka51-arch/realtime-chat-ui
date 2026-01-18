@@ -85,23 +85,36 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
           className="fixed bottom-20 right-4 z-50 w-[360px] h-[500px] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-                  <AvatarImage src="/roman-logo.png" />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    <Bot className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                {/* Meta AI style avatar */}
+                <div 
+                  className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg"
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                  }}
+                >
+                  <svg viewBox="0 0 100 100" className="w-6 h-6" fill="none">
+                    <path
+                      d="M50 20 L57 38 L75 43 L57 48 L50 66 L43 48 L25 43 L43 38 Z"
+                      fill="white"
+                    />
+                    <circle cx="68" cy="28" r="4" fill="white" opacity="0.8" />
+                    <circle cx="32" cy="58" r="3" fill="white" opacity="0.6" />
+                  </svg>
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-foreground">Roman AI</span>
-                  <Sparkles className="h-4 w-4 text-primary" />
+                  <svg className="h-4 w-4" viewBox="0 0 22 22" fill="none">
+                    <circle cx="11" cy="11" r="11" fill="#1D9BF0"/>
+                    <path d="M9.5 14.5L6.5 11.5L7.5 10.5L9.5 12.5L14.5 7.5L15.5 8.5L9.5 14.5Z" fill="white"/>
+                  </svg>
                 </div>
-                <span className="text-xs text-muted-foreground">Always here to help</span>
+                <span className="text-xs text-muted-foreground">AI Assistant • Online</span>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose}>
