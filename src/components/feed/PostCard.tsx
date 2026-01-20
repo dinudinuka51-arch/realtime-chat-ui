@@ -151,17 +151,22 @@ export const PostCard = ({ post, onUpdate }: PostCardProps) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.2 }}
+      className="bg-card rounded-2xl border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden backdrop-blur-sm"
     >
       {/* Header */}
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between bg-gradient-to-r from-transparent via-muted/20 to-transparent">
         <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={post.profile?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary">
-              {post.profile?.username?.charAt(0).toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="w-11 h-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+              <AvatarImage src={post.profile?.avatar_url || undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-semibold">
+                {post.profile?.username?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
+          </div>
           <div>
             <p className="font-semibold text-sm">
               {post.profile?.full_name || post.profile?.username || 'Unknown'}

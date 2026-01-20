@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff, DollarSign } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff, DollarSign, Gamepad2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { ProfileEditDialog } from '@/components/chat/ProfileEditDialog';
 import { DeleteAccountDialog } from '@/components/chat/DeleteAccountDialog';
 import { ProfileHighlights } from '@/components/stories/ProfileHighlights';
 import { MonetizationView } from '@/components/monetization/MonetizationView';
+import { RomanGamesButton } from '@/components/games/RomanGamesButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from 'next-themes';
@@ -34,6 +35,7 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showMonetization, setShowMonetization] = useState(false);
+  const [showGames, setShowGames] = useState(false);
   const [stats, setStats] = useState({ posts: 0, stories: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -160,10 +162,33 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
         {/* Settings Card */}
         <Card>
           <CardContent className="p-4 space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Settings
+              </h3>
+              {/* Games Button - appears when touching settings */}
+              {showGames && (
+                <RomanGamesButton className="!relative !bottom-auto !left-auto !z-10" />
+              )}
+            </div>
+            <Separator />
+
+            {/* Games Toggle */}
+            <div 
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setShowGames(!showGames)}
+            >
+              <div className="flex items-center gap-3">
+                <Gamepad2 className="h-5 w-5 text-orange-500" />
+                <span>Roman Games</span>
+              </div>
+              <Switch
+                checked={showGames}
+                onCheckedChange={setShowGames}
+              />
+            </div>
+
             <Separator />
 
             {/* Notifications Toggle */}

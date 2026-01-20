@@ -8,7 +8,6 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RomanAIButton } from '@/components/chat/RomanAIButton';
-import { RomanGamesButton } from '@/components/games/RomanGamesButton';
 
 // Lazy load non-critical views
 const RomanFeed = lazy(() => import('@/components/feed/RomanFeed').then(m => ({ default: m.RomanFeed })));
@@ -163,7 +162,6 @@ const Index = () => {
         />
       )}
       <RomanAIButton />
-      <RomanGamesButton />
     </>
   );
 };
