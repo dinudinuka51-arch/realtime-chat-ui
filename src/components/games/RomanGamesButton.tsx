@@ -2,19 +2,39 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2 } from 'lucide-react';
 import { RomanGames } from './RomanGames';
+import { GamePasswordDialog } from './GamePasswordDialog';
 
-export const RomanGamesButton = () => {
+interface RomanGamesButtonProps {
+  className?: string;
+}
+
+export const RomanGamesButton = ({ className }: RomanGamesButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+
+  const handleClick = () => {
+    // Check if already verified in this session
+    const isVerified = sessionStorage.getItem('games_verified') === 'true';
+    if (isVerified) {
+      setIsOpen(true);
+    } else {
+      setShowPasswordDialog(true);
+    }
+  };
+
+  const handlePasswordSuccess = () => {
+    setIsOpen(true);
+  };
 
   return (
     <>
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        className="fixed bottom-20 left-4 z-40 md:bottom-6"
+        className={className}
       >
         <motion.button
-          onClick={() => setIsOpen(true)}
+          onClick={handleClick}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="relative h-14 w-14 rounded-full shadow-2xl overflow-hidden group"
@@ -75,6 +95,11 @@ export const RomanGamesButton = () => {
         </motion.button>
       </motion.div>
       
+      <GamePasswordDialog 
+        open={showPasswordDialog} 
+        onOpenChange={setShowPasswordDialog}
+        onSuccess={handlePasswordSuccess}
+      />
       <RomanGames isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </>
   );

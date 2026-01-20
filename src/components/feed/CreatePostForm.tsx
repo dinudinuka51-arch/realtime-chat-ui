@@ -105,21 +105,23 @@ export const CreatePostForm = ({ onPostCreated, userProfile }: CreatePostFormPro
   };
 
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border shadow-sm">
+    <div className="bg-card rounded-2xl p-4 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
       <div className="flex gap-3">
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={userProfile?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary">
-            {userProfile?.username?.charAt(0).toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="w-11 h-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+            <AvatarImage src={userProfile?.avatar_url || undefined} />
+            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-semibold">
+              {userProfile?.username?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </div>
 
         <div className="flex-1 space-y-3">
           <Textarea
-            placeholder="What's on your mind?"
+            placeholder="What's happening? Share your thoughts..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
+            className="min-h-[100px] resize-none border-0 bg-gradient-to-br from-muted/30 to-muted/50 focus-visible:ring-2 focus-visible:ring-primary/30 rounded-xl text-sm placeholder:text-muted-foreground/60"
           />
 
           {/* Media preview */}
@@ -150,8 +152,8 @@ export const CreatePostForm = ({ onPostCreated, userProfile }: CreatePostFormPro
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between pt-3 border-t border-border/50">
+            <div className="flex gap-1">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -164,8 +166,9 @@ export const CreatePostForm = ({ onPostCreated, userProfile }: CreatePostFormPro
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting}
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
-                <Image className="h-4 w-4 mr-1" />
+                <Image className="h-4 w-4 mr-1.5" />
                 Photo
               </Button>
               <Button
@@ -173,8 +176,9 @@ export const CreatePostForm = ({ onPostCreated, userProfile }: CreatePostFormPro
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting}
+                className="hover:bg-accent/10 hover:text-accent transition-colors"
               >
-                <Video className="h-4 w-4 mr-1" />
+                <Video className="h-4 w-4 mr-1.5" />
                 Video
               </Button>
             </div>
@@ -182,13 +186,13 @@ export const CreatePostForm = ({ onPostCreated, userProfile }: CreatePostFormPro
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || (!content.trim() && !mediaFile)}
-              className="rounded-full"
+              className="rounded-full px-6 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-md hover:shadow-lg transition-all"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <Send className="h-4 w-4 mr-1" />
+                  <Send className="h-4 w-4 mr-1.5" />
                   Post
                 </>
               )}
