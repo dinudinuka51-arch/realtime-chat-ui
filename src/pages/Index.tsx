@@ -16,8 +16,9 @@ const ProfileView = lazy(() => import('@/components/profile/ProfileView').then(m
 const StoreView = lazy(() => import('@/components/store/StoreView').then(m => ({ default: m.StoreView })));
 const MarketplaceView = lazy(() => import('@/components/marketplace/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 const SettingsView = lazy(() => import('@/components/settings/SettingsView').then(m => ({ default: m.SettingsView })));
+const MicroJobsView = lazy(() => import('@/components/microjobs/MicroJobsView').then(m => ({ default: m.MicroJobsView })));
 
-type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin' | 'marketplace' | 'settings';
+type AppView = 'chat' | 'feed' | 'store' | 'profile' | 'admin' | 'marketplace' | 'settings' | 'microjobs';
 
 const ViewSkeleton = () => (
   <div className="min-h-screen bg-background p-4 space-y-4">
@@ -105,7 +106,22 @@ const Index = () => {
       case 'profile':
         return (
           <Suspense fallback={<ViewSkeleton />}>
-            <ProfileView onBack={() => handleNavigate('chat')} />
+            <ProfileView 
+              onBack={() => handleNavigate('chat')} 
+              onOpenMicroJobs={() => handleNavigate('microjobs')}
+            />
+          </Suspense>
+        );
+      case 'microjobs':
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <MicroJobsView 
+              onBack={() => handleNavigate('profile')}
+              onOpenChat={(conversationId) => {
+                setPendingConversationId(conversationId);
+                handleNavigate('chat');
+              }}
+            />
           </Suspense>
         );
       case 'store':
@@ -147,10 +163,10 @@ const Index = () => {
     }
   };
 
-  // Determine bottom nav visibility (hide on admin view)
-  const showBottomNav = currentView !== 'admin';
+  // Determine bottom nav visibility (hide on admin and microjobs view)
+  const showBottomNav = currentView !== 'admin' && currentView !== 'microjobs';
   // Map current view to bottom nav view type
-  const bottomNavView = currentView === 'admin' ? 'chat' : currentView;
+  const bottomNavView = (currentView === 'admin' || currentView === 'microjobs') ? 'chat' : currentView;
 
   return (
     <>

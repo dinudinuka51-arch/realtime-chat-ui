@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff, DollarSign, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut, Edit2, Moon, Sun, Bell, BellOff, DollarSign, Gamepad2, Briefcase } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,9 +20,10 @@ import { ProfileSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface ProfileViewProps {
   onBack: () => void;
+  onOpenMicroJobs?: () => void;
 }
 
-export const ProfileView = ({ onBack }: ProfileViewProps) => {
+export const ProfileView = ({ onBack, onOpenMicroJobs }: ProfileViewProps) => {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { permission, requestPermission, isSupported } = useNotifications();
@@ -172,6 +173,18 @@ export const ProfileView = ({ onBack }: ProfileViewProps) => {
                 <RomanGamesButton className="!relative !bottom-auto !left-auto !z-10" />
               )}
             </div>
+            <Separator />
+
+            {/* Micro Jobs Button */}
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:from-blue-500/20 hover:to-cyan-500/20 border-blue-500/30"
+              onClick={onOpenMicroJobs}
+            >
+              <Briefcase className="h-5 w-5 mr-3 text-blue-500" />
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Micro Jobs</span>
+            </Button>
+
             <Separator />
 
             {/* Games Toggle */}
