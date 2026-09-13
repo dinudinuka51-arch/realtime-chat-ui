@@ -19,7 +19,7 @@ export const VoiceRecorder = ({ conversationId, onVoiceSent }: VoiceRecorderProp
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startRecording = async () => {
     try {

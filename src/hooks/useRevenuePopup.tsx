@@ -18,7 +18,7 @@ const INITIAL_DELAY_MS = 5 * 1000; // 5 seconds after app open
 
 export const useRevenuePopup = () => {
   const { user } = useAuth();
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasInitialPopupRef = useRef(false);
 
   const openPopup = () => {

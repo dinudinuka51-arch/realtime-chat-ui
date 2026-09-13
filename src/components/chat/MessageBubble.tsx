@@ -27,7 +27,7 @@ interface MessageBubbleProps {
 export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps) => {
   const { user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [pressTimer, setPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const formatMessageTime = (dateStr: string) => {
     return format(new Date(dateStr), 'HH:mm');
