@@ -1,21 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const { message, conversationHistory } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!message || typeof message !== "string") {
+      return new Response(
+        JSON.stringify({ error: "message is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const HY3_API_KEY = Deno.env.get("HY3_API_KEY");
+
+    if (!HY3_API_KEY) {
+      throw new Error("HY3_API_KEY is not configured");
     }
 
     const messages = [
@@ -31,15 +35,14 @@ Always be respectful and maintain a positive, supportive tone.`,
       { role: "user", content: message },
     ];
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.b.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Lovable-API-Key": LOVABLE_API_KEY,
+        "Authorization": `Bearer ${HY3_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.7-flash",
+        model: "hy3",
         messages,
       }),
     });
@@ -56,7 +59,7 @@ Always be respectful and maintain a positive, supportive tone.`,
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits in Lovable." }),
+          JSON.stringify({ error: "AI credits exhausted on the HY3 account." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
