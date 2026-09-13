@@ -49,19 +49,36 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
         content: m.content
       }));
 
-      const { data, error } = await supabase.functions.invoke('roman-ai', {
+      const invokeAI = () => supabase.functions.invoke('roman-ai', {
         body: { message: userMessage, conversationHistory }
       });
 
-      if (error) throw error;
+      let { data, error } = await invokeAI();
+
+      // Auto-retry once on transient failures (rate limits, cold starts)
+      if (error) {
+        await new Promise(r => setTimeout(r, 2000));
+        ({ data, error } = await invokeAI());
+      }
+
+      if (error) {
+        // Try to surface the real error message from the function
+        let msg = 'Failed to get response from Roman AI';
+        try {
+          const body = await (error as { context?: Response }).context?.json();
+          if (body?.error) msg = body.error;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
 
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to get response from Roman AI');
+      const msg = error instanceof Error ? error.message : 'Failed to get response from Roman AI';
+      toast.error(msg);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again later.' 
+        content: `Sorry, I hit a problem: ${msg}. Please try again in a moment.` 
       }]);
     } finally {
       setIsLoading(false);

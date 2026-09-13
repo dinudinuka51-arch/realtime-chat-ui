@@ -35,7 +35,7 @@ Always be respectful and maintain a positive, supportive tone.`,
       { role: "user", content: message },
     ];
 
-    const response = await fetch("https://api.b.ai/v1/chat/completions", {
+    const callAI = () => fetch("https://api.b.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${HY3_API_KEY}`,
@@ -47,13 +47,21 @@ Always be respectful and maintain a positive, supportive tone.`,
       }),
     });
 
+    let response = await callAI();
+
+    // Retry once on rate limit (b.ai hits upstream RPM caps sometimes)
+    if (response.status === 429) {
+      await new Promise((r) => setTimeout(r, 3000));
+      response = await callAI();
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI API error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
