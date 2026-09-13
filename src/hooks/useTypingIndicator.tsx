@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 export const useTypingIndicator = (conversationId: string) => {
   const { user } = useAuth();
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const lastTypingRef = useRef<number>(0);
 
   // Update typing status

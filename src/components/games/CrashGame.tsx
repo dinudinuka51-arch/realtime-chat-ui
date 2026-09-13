@@ -21,7 +21,7 @@ export const CrashGame = ({ balance, onWin, onLose }: CrashGameProps) => {
   const [hasBet, setHasBet] = useState(false);
   const [crashPoint, setCrashPoint] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentBetRef = useRef(0);
 
   // Generate crash point with house edge
