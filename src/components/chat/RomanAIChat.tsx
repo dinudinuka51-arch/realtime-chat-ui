@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Bot, Loader2, Sparkles, X } from 'lucide-react';
+import { Send, Bot, Loader2, Sparkles, X, Video, MessageCircle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  videoUrl?: string;
+  videoPending?: boolean;
 }
 
 interface RomanAIChatProps {
@@ -27,6 +29,7 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [videoMode, setVideoMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,13 +38,72 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
     }
   }, [messages]);
 
+  const generateVideo = async (promptText: string) => {
+    setMessages(prev => [...prev, { role: 'user', content: promptText }]);
+    setIsLoading(true);
+    const placeholderIndex = messages.length + 1;
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '🎬 Creating your video... this usually takes 1-3 minutes.',
+      videoPending: true,
+    }]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('roman-video', {
+        body: { action: 'create', prompt: promptText, orientation: 'portrait', seconds: 5 },
+      });
+      if (error || data?.error) throw new Error(data?.error || 'Could not start the video.');
+
+      const id = data.id;
+      const started = Date.now();
+
+      // Poll until the render finishes (max ~8 minutes)
+      while (Date.now() - started < 8 * 60 * 1000) {
+        await new Promise(r => setTimeout(r, 6000));
+        const { data: s } = await supabase.functions.invoke('roman-video', {
+          body: { action: 'status', id },
+        });
+        if (s?.status === 'complete' && s?.url) {
+          setMessages(prev => prev.map((m, i) => i === placeholderIndex
+            ? { role: 'assistant', content: 'Here is your video! 🎥', videoUrl: s.url }
+            : m));
+          return;
+        }
+        if (s?.status === 'error' || s?.error) {
+          throw new Error(s?.error || 'Video generation failed.');
+        }
+        if (typeof s?.progress === 'number') {
+          setMessages(prev => prev.map((m, i) => i === placeholderIndex
+            ? { ...m, content: `🎬 Creating your video... ${Math.round(s.progress)}%` }
+            : m));
+        }
+      }
+      throw new Error('Video is taking too long. Please try again.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Video generation failed.';
+      toast.error(msg);
+      setMessages(prev => prev.map((m, i) => i === placeholderIndex
+        ? { role: 'assistant', content: `Sorry, ${msg}` }
+        : m));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
     setInput('');
+
+    if (videoMode) {
+      await generateVideo(userMessage);
+      return;
+    }
+
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
+
 
     try {
       const conversationHistory = messages.map(m => ({
@@ -157,6 +219,27 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.videoPending && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-2" />
+                    )}
+                    {message.videoUrl && (
+                      <div className="mt-2 space-y-2">
+                        <video
+                          src={message.videoUrl}
+                          controls
+                          playsInline
+                          className="w-full rounded-xl"
+                        />
+                        <a
+                          href={message.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Download
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -176,12 +259,27 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
 
           {/* Input */}
           <div className="p-4 border-t border-border bg-background/50 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={videoMode ? 'default' : 'secondary'}
+                onClick={() => setVideoMode(v => !v)}
+                className="rounded-full h-7 px-3 text-xs gap-1.5"
+              >
+                {videoMode ? <Video className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                {videoMode ? 'Video mode' : 'Chat mode'}
+              </Button>
+              {videoMode && (
+                <span className="text-[11px] text-muted-foreground">Describe the video you want</span>
+              )}
+            </div>
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask Roman anything..."
+                placeholder={videoMode ? 'Describe your video...' : 'Ask Roman anything...'}
                 className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isLoading}
               />
