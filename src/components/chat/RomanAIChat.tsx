@@ -259,12 +259,27 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
 
           {/* Input */}
           <div className="p-4 border-t border-border bg-background/50 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={videoMode ? 'default' : 'secondary'}
+                onClick={() => setVideoMode(v => !v)}
+                className="rounded-full h-7 px-3 text-xs gap-1.5"
+              >
+                {videoMode ? <Video className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                {videoMode ? 'Video mode' : 'Chat mode'}
+              </Button>
+              {videoMode && (
+                <span className="text-[11px] text-muted-foreground">Describe the video you want</span>
+              )}
+            </div>
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask Roman anything..."
+                placeholder={videoMode ? 'Describe your video...' : 'Ask Roman anything...'}
                 className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isLoading}
               />
