@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Bot, Loader2, Sparkles, X } from 'lucide-react';
+import { Send, Bot, Loader2, Sparkles, X, Video, MessageCircle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  videoUrl?: string;
+  videoPending?: boolean;
 }
 
 interface RomanAIChatProps {
