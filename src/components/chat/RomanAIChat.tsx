@@ -219,6 +219,27 @@ export const RomanAIChat = ({ isOpen, onClose }: RomanAIChatProps) => {
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.videoPending && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-2" />
+                    )}
+                    {message.videoUrl && (
+                      <div className="mt-2 space-y-2">
+                        <video
+                          src={message.videoUrl}
+                          controls
+                          playsInline
+                          className="w-full rounded-xl"
+                        />
+                        <a
+                          href={message.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Download
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
